@@ -1,21 +1,21 @@
-// payments.js — Shared HBAR micropayment system for all modules
-const COSTS = {
-  // Server 1 — HCS Topic Intelligence
-  hcs_monitor:       { tinybars: 5_000_000,   hbar: "0.0500" },
-  hcs_query:         { tinybars: 5_000_000,   hbar: "0.0500" },
-  hcs_understand:    { tinybars: 50_000_000,  hbar: "0.5000" },
+// payments.js - Shared HBAR micropayment system for all modules
 
-  // Server 2 — Compliance & Audit Trail
-  hcs_write_record:  { tinybars: 200_000_000, hbar: "2.0000" },
-  hcs_verify_record: { tinybars: 50_000_000,  hbar: "0.5000" },
-  hcs_audit_trail:   { tinybars: 100_000_000, hbar: "1.0000" },
+const COSTS = {
+  // Server 1 - HCS Topic Intelligence
+  hcs_monitor:       { tinybars: 5000000,   hbar: "0.0500" },
+  hcs_query:         { tinybars: 5000000,   hbar: "0.0500" },
+  hcs_understand:    { tinybars: 50000000,  hbar: "0.5000" },
+  // Server 2 - Compliance & Audit Trail
+  hcs_write_record:  { tinybars: 200000000, hbar: "2.0000" },
+  hcs_verify_record: { tinybars: 50000000,  hbar: "0.5000" },
+  hcs_audit_trail:   { tinybars: 100000000, hbar: "1.0000" },
 };
 
 const accounts = new Map();
 
 function getAccount(apiKey) {
   if (!accounts.has(apiKey)) {
-    accounts.set(apiKey, { balance: 100_000_000 });
+    accounts.set(apiKey, { balance: 100000000 });
   }
   return accounts.get(apiKey);
 }
@@ -27,13 +27,12 @@ export function chargeForTool(toolName, apiKey) {
   const account = getAccount(apiKey);
   if (account.balance < cost.tinybars) {
     throw new Error(
-      `Insufficient HBAR balance. Required: ${cost.hbar} HBAR. Please top up your AgentLens account.`
+      "Insufficient HBAR balance. Required: " + cost.hbar + " HBAR. Please top up your AgentLens account."
     );
   }
 
   account.balance -= cost.tinybars;
-  const remainingHbar = (account.balance / 100_000_000).toFixed(4);
-
+  const remainingHbar = (account.balance / 100000000).toFixed(4);
   return {
     charged_hbar: cost.hbar,
     remaining_hbar: remainingHbar,
@@ -46,5 +45,5 @@ export function getCosts() {
 
 export function getBalance(apiKey) {
   const account = getAccount(apiKey);
-  return (account.balance / 100_000_000).toFixed(4);
+  return (account.balance / 100000000).toFixed(4);
 }
