@@ -14,9 +14,9 @@
       "version": "1.0.0",
       "runtimeHint": "npx",
       "transport": {
-        "type": "http"
+        "type": "streamable-http",
+        "url": "https://hedera-mcp-platform-production.up.railway.app/mcp"
       },
-      "url": "https://hedera-mcp-platform-production.up.railway.app/mcp",
       "environmentVariables": [
         {
           "description": "Hedera account ID in format 0.0.XXXXXXX",
