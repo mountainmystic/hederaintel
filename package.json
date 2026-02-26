@@ -1,0 +1,26 @@
+{
+  "name": "hedera-mcp-platform",
+  "version": "1.0.0",
+  "mcpName": "io.github.mountainmystic/hedera-mcp-platform",
+  "description": "Complete Hedera ecosystem intelligence platform for AI agents. 8 MCP servers, 24 tools. Pay per call in HBAR.",
+  "main": "src/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mountainmystic/hedera-mcp-platform.git"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@hashgraph/sdk": "^2.46.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "openai": "^4.56.0",
+    "dotenv": "^16.4.5",
+    "axios": "^1.7.7"
+  }
+}
