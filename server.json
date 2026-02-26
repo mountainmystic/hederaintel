@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.mountainmystic/hedera-mcp-platform",
-  "description": "Complete Hedera ecosystem intelligence platform for AI agents. 6 tools across HCS and Compliance modules. Pay per call in HBAR.",
+  "description": "Hedera ecosystem intelligence for AI agents. 6 tools, 2 modules. Pay per call in HBAR.",
   "repository": {
     "url": "https://github.com/mountainmystic/hedera-mcp-platform",
     "source": "github"
