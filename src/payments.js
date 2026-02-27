@@ -1,14 +1,18 @@
 // payments.js - Shared HBAR micropayment system for all modules
 
 const COSTS = {
-  // Server 1 - HCS Topic Intelligence
-  hcs_monitor:       { tinybars: 5000000,   hbar: "0.0500" },
-  hcs_query:         { tinybars: 5000000,   hbar: "0.0500" },
-  hcs_understand:    { tinybars: 50000000,  hbar: "0.5000" },
-  // Server 2 - Compliance & Audit Trail
-  hcs_write_record:  { tinybars: 200000000, hbar: "2.0000" },
-  hcs_verify_record: { tinybars: 50000000,  hbar: "0.5000" },
-  hcs_audit_trail:   { tinybars: 100000000, hbar: "1.0000" },
+  // Module 1 - HCS Topic Intelligence
+  hcs_monitor:          { tinybars: 5000000,   hbar: "0.0500" },
+  hcs_query:            { tinybars: 5000000,   hbar: "0.0500" },
+  hcs_understand:       { tinybars: 50000000,  hbar: "0.5000" },
+  // Module 2 - Compliance & Audit Trail
+  hcs_write_record:     { tinybars: 200000000, hbar: "2.0000" },
+  hcs_verify_record:    { tinybars: 50000000,  hbar: "0.5000" },
+  hcs_audit_trail:      { tinybars: 100000000, hbar: "1.0000" },
+  // Module 3 - Governance Intelligence
+  governance_monitor:   { tinybars: 10000000,  hbar: "0.1000" },
+  governance_analyze:   { tinybars: 50000000,  hbar: "0.5000" },
+  governance_vote:      { tinybars: 200000000, hbar: "2.0000" },
 };
 
 const accounts = new Map();

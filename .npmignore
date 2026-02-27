@@ -1,0 +1,7 @@
+.env
+.env.example
+.mcpregistry_registry_token
+.mcpregistry_github_token
+mcp-publisher.exe
+node_modules/
+railway.toml
