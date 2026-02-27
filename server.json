@@ -1,11 +1,17 @@
 {
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
   "name": "io.github.mountainmystic/hedera-mcp-platform",
-  "version": "1.1.0",
-  "description": "Complete Hedera ecosystem intelligence platform for AI agents. 8 MCP servers, 24 tools. Pay per call in HBAR.",
-  "registryType": "npm",
-  "packageName": "hedera-mcp-platform",
-  "transport": {
-    "type": "streamable-http",
-    "url": "https://hedera-mcp-platform-production.up.railway.app/mcp"
-  }
+  "version": "1.2.0",
+  "description": "Hedera ecosystem intelligence for AI agents. 13 tools, pay per call in HBAR.",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "hedera-mcp-platform",
+      "version": "1.2.0",
+      "transport": {
+        "type": "streamable-http",
+        "url": "https://hedera-mcp-platform-production.up.railway.app/mcp"
+      }
+    }
+  ]
 }

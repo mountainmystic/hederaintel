@@ -13,6 +13,11 @@ const COSTS = {
   governance_monitor:   { tinybars: 10000000,  hbar: "0.1000" },
   governance_analyze:   { tinybars: 50000000,  hbar: "0.5000" },
   governance_vote:      { tinybars: 200000000, hbar: "2.0000" },
+  // Module 4 - Token & DeFi Intelligence
+  token_price:          { tinybars: 5000000,   hbar: "0.0500" },
+  token_analyze:        { tinybars: 30000000,  hbar: "0.3000" },
+  defi_yields:          { tinybars: 20000000,  hbar: "0.2000" },
+  token_monitor:        { tinybars: 10000000,  hbar: "0.1000" },
 };
 
 const accounts = new Map();

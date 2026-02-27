@@ -7,11 +7,13 @@ import {
 import { HCS_TOOL_DEFINITIONS, executeHCSTool } from "./modules/hcs/tools.js";
 import { COMPLIANCE_TOOL_DEFINITIONS, executeComplianceTool } from "./modules/compliance/tools.js";
 import { GOVERNANCE_TOOL_DEFINITIONS, executeGovernanceTool } from "./modules/governance/tools.js";
+import { TOKEN_TOOL_DEFINITIONS, executeTokenTool } from "./modules/token/tools.js";
 
 const ALL_TOOLS = [
   ...HCS_TOOL_DEFINITIONS,
   ...COMPLIANCE_TOOL_DEFINITIONS,
   ...GOVERNANCE_TOOL_DEFINITIONS,
+  ...TOKEN_TOOL_DEFINITIONS,
 ];
 
 async function routeTool(name, args) {
@@ -24,12 +26,15 @@ async function routeTool(name, args) {
   if (["governance_monitor", "governance_analyze", "governance_vote"].includes(name)) {
     return executeGovernanceTool(name, args);
   }
+  if (["token_price", "token_analyze", "defi_yields", "token_monitor"].includes(name)) {
+    return executeTokenTool(name, args);
+  }
   throw new Error(`Unknown tool: ${name}`);
 }
 
 export function createServer() {
   const server = new Server(
-    { name: "hedera-mcp-platform", version: "1.1.0" },
+    { name: "hedera-mcp-platform", version: "1.2.0" },
     { capabilities: { tools: {} } }
   );
 
