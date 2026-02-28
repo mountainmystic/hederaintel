@@ -1,6 +1,9 @@
-// payments.js - Shared HBAR micropayment system for all modules
+// payments.js - HBAR micropayment system backed by SQLite persistence
+// Replaces the old in-memory Map. Balances now survive restarts.
 
-const COSTS = {
+import { deductBalance, getBalance as dbGetBalance } from "./db.js";
+
+export const COSTS = {
   // Module 1 - HCS Topic Intelligence
   hcs_monitor:              { tinybars: 5000000,   hbar: "0.0500" },
   hcs_query:                { tinybars: 5000000,   hbar: "0.0500" },
@@ -37,28 +40,16 @@ const COSTS = {
   bridge_analyze:           { tinybars: 50000000,  hbar: "0.5000" },
 };
 
-const accounts = new Map();
-
-function getAccount(apiKey) {
-  if (!accounts.has(apiKey)) {
-    accounts.set(apiKey, { balance: 1000000000 }); // 10 HBAR starting balance
-  }
-  return accounts.get(apiKey);
-}
-
+// Called by every tool before executing. Deducts cost from the account's
+// persistent balance. Throws a clear error if the key is unknown or funds
+// are insufficient — that error message reaches the calling AI agent.
 export function chargeForTool(toolName, apiKey) {
   const cost = COSTS[toolName];
-  if (!cost) return null;
+  if (!cost) return null; // free or unmetered tool
 
-  const account = getAccount(apiKey);
-  if (account.balance < cost.tinybars) {
-    throw new Error(
-      "Insufficient HBAR balance. Required: " + cost.hbar + " HBAR. Please top up your AgentLens account."
-    );
-  }
+  const newBalanceTinybars = deductBalance(apiKey, cost.tinybars, toolName);
+  const remainingHbar = (newBalanceTinybars / 100000000).toFixed(4);
 
-  account.balance -= cost.tinybars;
-  const remainingHbar = (account.balance / 100000000).toFixed(4);
   return {
     charged_hbar: cost.hbar,
     remaining_hbar: remainingHbar,
@@ -70,6 +61,6 @@ export function getCosts() {
 }
 
 export function getBalance(apiKey) {
-  const account = getAccount(apiKey);
-  return (account.balance / 100000000).toFixed(4);
+  const tinybars = dbGetBalance(apiKey);
+  return (tinybars / 100000000).toFixed(4);
 }
