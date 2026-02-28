@@ -291,9 +291,9 @@ export async function executeContractTool(name, args) {
     const maxGas = gasUsed.length > 0 ? Math.max(...gasUsed) : 0;
     const minGas = gasUsed.length > 0 ? Math.min(...gasUsed) : 0;
 
-    // Success/failure rate
-    const successCount = results.filter(r => r.status === "0x1").length;
-    const failCount = results.filter(r => r.status !== "0x1" && r.status).length;
+    // Success/failure rate (mirror node returns "SUCCESS" or error string)
+    const successCount = results.filter(r => r.result === "SUCCESS").length;
+    const failCount = results.filter(r => r.result && r.result !== "SUCCESS").length;
 
     // Activity trend - group by day
     const dayActivity = {};
