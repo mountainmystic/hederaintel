@@ -10,6 +10,7 @@ import { GOVERNANCE_TOOL_DEFINITIONS, executeGovernanceTool } from "./modules/go
 import { TOKEN_TOOL_DEFINITIONS, executeTokenTool } from "./modules/token/tools.js";
 import { IDENTITY_TOOL_DEFINITIONS, executeIdentityTool } from "./modules/identity/tools.js";
 import { CONTRACT_TOOL_DEFINITIONS, executeContractTool } from "./modules/contract/tools.js";
+import { NFT_TOOL_DEFINITIONS, executeNFTTool } from "./modules/nft/tools.js";
 
 const ALL_TOOLS = [
   ...HCS_TOOL_DEFINITIONS,
@@ -18,6 +19,7 @@ const ALL_TOOLS = [
   ...TOKEN_TOOL_DEFINITIONS,
   ...IDENTITY_TOOL_DEFINITIONS,
   ...CONTRACT_TOOL_DEFINITIONS,
+  ...NFT_TOOL_DEFINITIONS,
 ];
 
 async function routeTool(name, args) {
@@ -39,12 +41,15 @@ async function routeTool(name, args) {
   if (["contract_read", "contract_call", "contract_analyze"].includes(name)) {
     return executeContractTool(name, args);
   }
+  if (["nft_collection_info", "nft_token_metadata", "nft_collection_analyze", "token_holders"].includes(name)) {
+    return executeNFTTool(name, args);
+  }
   throw new Error(`Unknown tool: ${name}`);
 }
 
 export function createServer() {
   const server = new Server(
-    { name: "hedera-mcp-platform", version: "1.4.0" },
+    { name: "hedera-mcp-platform", version: "1.5.0" },
     { capabilities: { tools: {} } }
   );
 

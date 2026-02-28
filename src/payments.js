@@ -26,13 +26,18 @@ const COSTS = {
   contract_read:            { tinybars: 10000000,  hbar: "0.1000" },
   contract_call:            { tinybars: 50000000,  hbar: "0.5000" },
   contract_analyze:         { tinybars: 100000000, hbar: "1.0000" },
+  // Module 7 - NFT & Token Metadata
+  nft_collection_info:      { tinybars: 10000000,  hbar: "0.1000" },
+  nft_token_metadata:       { tinybars: 10000000,  hbar: "0.1000" },
+  nft_collection_analyze:   { tinybars: 30000000,  hbar: "0.3000" },
+  token_holders:            { tinybars: 20000000,  hbar: "0.2000" },
 };
 
 const accounts = new Map();
 
 function getAccount(apiKey) {
   if (!accounts.has(apiKey)) {
-    accounts.set(apiKey, { balance: 100000000 });
+    accounts.set(apiKey, { balance: 1000000000 }); // 10 HBAR starting balance
   }
   return accounts.get(apiKey);
 }
