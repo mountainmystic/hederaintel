@@ -263,7 +263,6 @@ curl https://hedera-mcp-platform-production.up.railway.app/health
 
 ## Known Limitations
 
-- **`token_price`** — Spot price returns `null` pending SaucerSwap API key integration. Market cap and 24h volume are available.
 - **Mirror node holder data** — Balance endpoint occasionally returns empty arrays for low-activity tokens. Collection metadata is unaffected.
 
 ---
