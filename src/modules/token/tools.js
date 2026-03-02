@@ -37,7 +37,7 @@ export const TOKEN_TOOL_DEFINITIONS = [
       type: "object",
       properties: {
         token_id: { type: "string", description: "Hedera token ID (e.g. 0.0.123456)" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "api_key"],
     },
@@ -49,7 +49,7 @@ export const TOKEN_TOOL_DEFINITIONS = [
       type: "object",
       properties: {
         token_id: { type: "string", description: "Hedera token ID to analyze (e.g. 0.0.123456)" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "api_key"],
     },
@@ -62,7 +62,7 @@ export const TOKEN_TOOL_DEFINITIONS = [
       properties: {
         token_id: { type: "string", description: "Optional token ID to filter yields for a specific token" },
         min_apy: { type: "number", description: "Optional minimum APY percentage to filter results (e.g. 5 for 5%)" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["api_key"],
     },
@@ -75,7 +75,7 @@ export const TOKEN_TOOL_DEFINITIONS = [
       properties: {
         token_id: { type: "string", description: "Hedera token ID to monitor (e.g. 0.0.123456)" },
         limit: { type: "number", description: "Number of recent transactions to return (default 25, max 100)" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "api_key"],
     },

@@ -16,7 +16,7 @@ export const NFT_TOOL_DEFINITIONS = [
       type: "object",
       properties: {
         token_id: { type: "string", description: "Hedera token ID for the NFT collection (e.g. 0.0.123456)" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "api_key"],
     },
@@ -29,7 +29,7 @@ export const NFT_TOOL_DEFINITIONS = [
       properties: {
         token_id: { type: "string", description: "Hedera token ID for the NFT collection (e.g. 0.0.123456)" },
         serial_number: { type: "number", description: "Serial number of the specific NFT to look up" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "serial_number", "api_key"],
     },
@@ -41,7 +41,7 @@ export const NFT_TOOL_DEFINITIONS = [
       type: "object",
       properties: {
         token_id: { type: "string", description: "Hedera token ID for the NFT collection to analyze" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "api_key"],
     },
@@ -54,7 +54,7 @@ export const NFT_TOOL_DEFINITIONS = [
       properties: {
         token_id: { type: "string", description: "Hedera token ID to get holder distribution for" },
         limit: { type: "number", description: "Number of top holders to return (default 25, max 100)" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "api_key"],
     },

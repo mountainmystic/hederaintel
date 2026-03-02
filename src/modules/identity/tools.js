@@ -16,7 +16,7 @@ export const IDENTITY_TOOL_DEFINITIONS = [
       type: "object",
       properties: {
         account_id: { type: "string", description: "Hedera account ID to resolve (e.g. 0.0.123456)" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["account_id", "api_key"],
     },
@@ -29,7 +29,7 @@ export const IDENTITY_TOOL_DEFINITIONS = [
       properties: {
         account_id: { type: "string", description: "Hedera account ID to check KYC for" },
         token_id: { type: "string", description: "Optional token ID to check KYC status for a specific token" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["account_id", "api_key"],
     },
@@ -41,7 +41,7 @@ export const IDENTITY_TOOL_DEFINITIONS = [
       type: "object",
       properties: {
         account_id: { type: "string", description: "Hedera account ID to screen" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["account_id", "api_key"],
     },

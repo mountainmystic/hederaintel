@@ -34,7 +34,7 @@ export const BRIDGE_TOOL_DEFINITIONS = [
       type: "object",
       properties: {
         bridge_id: { type: "string", description: "Optional specific bridge contract ID or token ID to check status for" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["api_key"],
     },
@@ -47,7 +47,7 @@ export const BRIDGE_TOOL_DEFINITIONS = [
       properties: {
         token_id: { type: "string", description: "Hedera token ID of a bridged asset to monitor (e.g. USDC, WETH)" },
         limit: { type: "number", description: "Number of recent transfers to analyze (default 50, max 100)" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "api_key"],
     },
@@ -59,7 +59,7 @@ export const BRIDGE_TOOL_DEFINITIONS = [
       type: "object",
       properties: {
         token_id: { type: "string", description: "Hedera token ID of a bridged asset to analyze" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "api_key"],
     },

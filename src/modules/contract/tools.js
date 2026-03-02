@@ -16,7 +16,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       type: "object",
       properties: {
         contract_id: { type: "string", description: "Hedera contract ID (e.g. 0.0.123456) or EVM address (0x...)" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["contract_id", "api_key"],
     },
@@ -31,7 +31,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
         function_name: { type: "string", description: "Contract function name to call (e.g. balanceOf, totalSupply, name)" },
         function_params: { type: "array", description: "Optional array of parameter values to pass to the function", items: { type: "string" } },
         abi_hint: { type: "string", description: "Optional ABI hint - common values: ERC20, ERC721, HTS" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["contract_id", "function_name", "api_key"],
     },
@@ -43,7 +43,7 @@ export const CONTRACT_TOOL_DEFINITIONS = [
       type: "object",
       properties: {
         contract_id: { type: "string", description: "Hedera contract ID to analyze (e.g. 0.0.123456)" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["contract_id", "api_key"],
     },

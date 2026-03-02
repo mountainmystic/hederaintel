@@ -11,13 +11,13 @@ function getMirrorNodeBase() {
 export const GOVERNANCE_TOOL_DEFINITIONS = [
   {
     name: "governance_monitor",
-    description: "Monitor active governance proposals for a Hedera token or DAO. Returns open proposals, voting deadlines, and current vote tallies. Costs 0.1 HBAR.",
+    description: "Monitor active governance proposals for a Hedera token or DAO. Returns open proposals, voting deadlines, and current vote tallies. Provide topic_id for best results — without it, only token metadata is returned. Costs 0.1 HBAR.",
     inputSchema: {
       type: "object",
       properties: {
         token_id: { type: "string", description: "Hedera token ID to monitor governance for (e.g. 0.0.123456)" },
         topic_id: { type: "string", description: "Optional HCS topic ID used for governance messages" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "api_key"],
     },
@@ -31,7 +31,7 @@ export const GOVERNANCE_TOOL_DEFINITIONS = [
         token_id: { type: "string", description: "Hedera token ID the proposal belongs to" },
         proposal_id: { type: "string", description: "Proposal ID or HCS sequence number to analyze" },
         topic_id: { type: "string", description: "HCS topic ID where proposal votes are recorded" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["token_id", "proposal_id", "api_key"],
     },
@@ -47,7 +47,7 @@ export const GOVERNANCE_TOOL_DEFINITIONS = [
         vote: { type: "string", description: "Your vote: 'yes', 'no', or 'abstain'" },
         voter_id: { type: "string", description: "Your Hedera account ID (e.g. 0.0.123456)" },
         rationale: { type: "string", description: "Optional short rationale for your vote" },
-        api_key: { type: "string", description: "Your AgentLens API key" },
+        api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["topic_id", "proposal_id", "vote", "voter_id", "api_key"],
     },
