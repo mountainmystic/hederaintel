@@ -34,12 +34,21 @@ async function getSaucerSwapPools() {
   }
 }
 
-async function getSaucerSwapLatestPrice(tokenId) {
+async function getSaucerSwapPriceChange() {
   try {
-    const res = await axios.get(`${SAUCERSWAP_API}/tokens/prices/latest/${tokenId}`, { headers: saucerHeaders() });
-    return res.data?.[0] || null; // returns most recent OHLCV candle
+    const res = await axios.get(`${SAUCERSWAP_API}/tokens/price-change`, { headers: saucerHeaders() });
+    return res.data || {}; // { "0.0.731861": -2.53, ... }
   } catch (e) {
-    return null;
+    return {};
+  }
+}
+
+async function getSaucerSwapDefaultTokens() {
+  try {
+    const res = await axios.get(`${SAUCERSWAP_API}/tokens/default`, { headers: saucerHeaders() });
+    return res.data || []; // includes priceChangeHour/Day/Week and liquidityUsd
+  } catch (e) {
+    return [];
   }
 }
 
@@ -116,12 +125,14 @@ export async function executeTokenTool(name, args) {
     ).catch(() => ({ data: { balances: [] } }));
     const holders = (balRes.data.balances || []).sort((a, b) => parseInt(b.balance || 0) - parseInt(a.balance || 0));
 
-    // Fetch all tokens from SaucerSwap and find this one
-    const [saucerTokens, latestCandle] = await Promise.all([
+    // Fetch all tokens + price change data in parallel
+    const [saucerTokens, priceChangeMap, defaultTokens] = await Promise.all([
       getSaucerSwapTokens(),
-      getSaucerSwapLatestPrice(args.token_id),
+      getSaucerSwapPriceChange(),
+      getSaucerSwapDefaultTokens(),
     ]);
     const saucerToken = saucerTokens.find(t => t.id === args.token_id);
+    const defaultToken = defaultTokens.find(t => t.id === args.token_id);
 
     // Convert price from tinybars to HBAR
     let priceHbar = null;
@@ -131,26 +142,14 @@ export async function executeTokenTool(name, args) {
       priceUsd = saucerToken.priceUsd || null;
     }
 
-    // OHLCV from latest candle
-    let ohlcv = null;
-    if (latestCandle) {
-      ohlcv = {
-        open_usd: latestCandle.openUsd,
-        high_usd: latestCandle.highUsd,
-        low_usd: latestCandle.lowUsd,
-        close_usd: latestCandle.closeUsd,
-        avg_usd: latestCandle.avgUsd,
-        volume_usd: latestCandle.volumeUsd,
-        liquidity_usd: latestCandle.liquidityUsd,
-        period_start: new Date(latestCandle.startTimestampSeconds * 1000).toISOString(),
-      };
-    }
+    // 24h price change from /tokens/price-change map
+    const rawChange = priceChangeMap[args.token_id];
+    const priceChange24h = rawChange != null ? rawChange.toFixed(2) + "%" : null;
 
-    // 24h price change from open → current
-    let priceChange24h = null;
-    if (latestCandle?.openUsd && priceUsd) {
-      priceChange24h = (((priceUsd - latestCandle.openUsd) / latestCandle.openUsd) * 100).toFixed(2) + "%";
-    }
+    // Extended data from /tokens/default (only available for default-listed tokens)
+    const liquidityUsd = defaultToken?.liquidityUsd || null;
+    const priceChangeHour = defaultToken?.priceChangeHour != null ? defaultToken.priceChangeHour.toFixed(2) + "%" : null;
+    const priceChangeWeek = defaultToken?.priceChangeWeek != null ? defaultToken.priceChangeWeek.toFixed(2) + "%" : null;
 
     return {
       token_id: args.token_id,
@@ -163,8 +162,10 @@ export async function executeTokenTool(name, args) {
       holder_count: holders.length,
       price_hbar: priceHbar,
       price_usd: priceUsd,
+      price_change_1h_pct: priceChangeHour,
       price_change_24h_pct: priceChange24h,
-      ohlcv,
+      price_change_7d_pct: priceChangeWeek,
+      liquidity_usd: liquidityUsd ? "$" + liquidityUsd.toLocaleString() : null,
       price_source: saucerToken ? "SaucerSwap DEX" : "Not listed on SaucerSwap DEX",
       due_diligence_complete: saucerToken?.dueDiligenceComplete ?? null,
       created_timestamp: token.created_timestamp,
