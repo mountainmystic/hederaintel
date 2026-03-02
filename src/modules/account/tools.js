@@ -66,8 +66,8 @@ function getAccountInfo(args) {
   }
 
   return {
-    service: "AgentLens — Hedera MCP Platform",
-    description: "26 tools across 8 modules. Pay per call in HBAR. No registration required.",
+    service: "HederaIntel — Hedera MCP Platform",
+    description: "27 tools across 9 modules. Pay per call in HBAR. No registration required.",
 
     how_to_fund: {
       step_1: "Send any amount of HBAR to the platform wallet below.",
@@ -81,7 +81,7 @@ function getAccountInfo(args) {
     platform_wallet: {
       account_id: process.env.HEDERA_ACCOUNT_ID,
       network: process.env.HEDERA_NETWORK || "mainnet",
-      memo: "AgentLens deposit — your sending account ID becomes your API key",
+      memo: "HederaIntel deposit — your sending account ID becomes your API key",
     },
 
     pricing,

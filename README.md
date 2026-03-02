@@ -1,8 +1,9 @@
-# Hedera MCP Platform
+# HederaIntel
+**Hedera MCP Platform**
 
 > **27 tools. 9 modules. One unified MCP server for Hedera blockchain intelligence.**
 
-A production-ready [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI agents deep, structured access to the Hedera ecosystem — HCS topics, compliance trails, governance, tokens, DeFi, identity, smart contracts, NFTs, and cross-chain bridges. Pay per call in HBAR. No registration required.
+**HederaIntel** is the intelligence layer for AI agents operating on Hedera. A production-ready [Model Context Protocol](https://modelcontextprotocol.io) server that gives AI agents deep, structured access to the Hedera ecosystem — HCS topics, compliance trails, governance, tokens, DeFi, identity, smart contracts, NFTs, and cross-chain bridges. Pay per call in HBAR. No registration required.
 
 [![npm version](https://img.shields.io/npm/v/hedera-mcp-platform)](https://www.npmjs.com/package/hedera-mcp-platform)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-listed-blue)](https://registry.modelcontextprotocol.io)

@@ -1,4 +1,4 @@
-// db.js - SQLite persistence layer for AgentLens accounts and transactions
+// db.js - SQLite persistence layer for HederaIntel accounts and transactions
 // Uses node:sqlite — built into Node.js 22.5+, zero installation required.
 
 import { DatabaseSync } from "node:sqlite";
@@ -6,7 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, "..", "agentlens.db");
+const DB_PATH = path.join(__dirname, "..", "hederaintel.db");
 
 // Open (or create) the database file on disk
 const db = new DatabaseSync(DB_PATH);

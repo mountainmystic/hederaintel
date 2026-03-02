@@ -49,7 +49,7 @@ function startHTTPServer() {
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
       return json(res, 200, {
         status: "ok",
-        service: "Hedera MCP Platform",
+        service: "HederaIntel — Hedera MCP Platform",
         version: "1.7.0",
         network: process.env.HEDERA_NETWORK,
         account: process.env.HEDERA_ACCOUNT_ID,
