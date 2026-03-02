@@ -12,6 +12,7 @@ const SAUCERSWAP_API = "https://api.saucerswap.finance";
 
 function saucerHeaders() {
   const key = process.env.SAUCERSWAP_API_KEY;
+  if (!key) console.warn("[SaucerSwap] WARNING: SAUCERSWAP_API_KEY not set — price data will be unavailable");
   return key ? { "x-api-key": key } : {};
 }
 
