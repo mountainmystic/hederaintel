@@ -9,7 +9,7 @@ import { provisionKey, getAllAccounts, getRecentTransactions } from "./db.js";
 import { startWatcher } from "./watcher.js";
 
 function validateEnv() {
-  const required = ["HEDERA_ACCOUNT_ID", "HEDERA_PRIVATE_KEY", "OPENAI_API_KEY"];
+  const required = ["HEDERA_ACCOUNT_ID", "HEDERA_PRIVATE_KEY", "ANTHROPIC_API_KEY"];
   const missing = required.filter((key) => !process.env[key]);
   if (missing.length > 0) {
     console.error("Missing env vars: " + missing.join(", "));
