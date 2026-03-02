@@ -29,20 +29,22 @@ function getMirrorNodeBase() {
     : "https://testnet.mirrornode.hedera.com";
 }
 
+const PLATFORM_TOPIC = process.env.HCS_COMPLIANCE_TOPIC_ID || "0.0.10305125";
+
 export const COMPLIANCE_TOOL_DEFINITIONS = [
   {
     name: "hcs_write_record",
-    description: "Write a tamper-evident compliance record to the Hedera blockchain. Returns a record ID and transaction proof. Costs 2 HBAR.",
+    description: "Write a tamper-evident compliance record to the Hedera blockchain. Returns a record ID and transaction proof. If no topic_id is provided, writes to the shared HederaIntel platform topic. Costs 2 HBAR.",
     inputSchema: {
       type: "object",
       properties: {
-        topic_id: { type: "string", description: "HCS topic ID to write the record to" },
+        topic_id: { type: "string", description: "HCS topic ID to write the record to. Defaults to the HederaIntel platform topic." },
         record_type: { type: "string", description: "Type of compliance record (e.g. transaction, approval, audit_event)" },
         entity_id: { type: "string", description: "ID of the entity this record relates to" },
         data: { type: "object", description: "The compliance data to record (any JSON object)" },
         api_key: { type: "string", description: "Your HederaIntel API key" },
       },
-      required: ["topic_id", "record_type", "entity_id", "data", "api_key"],
+      required: ["record_type", "entity_id", "data", "api_key"],
     },
   },
   {
@@ -51,11 +53,11 @@ export const COMPLIANCE_TOOL_DEFINITIONS = [
     inputSchema: {
       type: "object",
       properties: {
-        topic_id: { type: "string", description: "HCS topic ID where the record was written" },
+        topic_id: { type: "string", description: "HCS topic ID where the record was written. Defaults to the HederaIntel platform topic." },
         record_id: { type: "string", description: "Record ID returned when the record was written" },
         api_key: { type: "string", description: "Your HederaIntel API key" },
       },
-      required: ["topic_id", "record_id", "api_key"],
+      required: ["record_id", "api_key"],
     },
   },
   {
@@ -64,12 +66,12 @@ export const COMPLIANCE_TOOL_DEFINITIONS = [
     inputSchema: {
       type: "object",
       properties: {
-        topic_id: { type: "string", description: "HCS topic ID to query" },
+        topic_id: { type: "string", description: "HCS topic ID to query. Defaults to the HederaIntel platform topic." },
         entity_id: { type: "string", description: "Entity ID to retrieve audit trail for" },
         limit: { type: "number", description: "Max records to retrieve (default 50)" },
         api_key: { type: "string", description: "Your HederaIntel API key" },
       },
-      required: ["topic_id", "entity_id", "api_key"],
+      required: ["entity_id", "api_key"],
     },
   },
 ];
@@ -78,6 +80,7 @@ export async function executeComplianceTool(name, args) {
   if (name === "hcs_write_record") {
     const payment = chargeForTool("hcs_write_record", args.api_key);
     const client = getClient();
+    const topicId = args.topic_id || PLATFORM_TOPIC;
 
     const record = {
       record_id: crypto.randomUUID(),
@@ -96,7 +99,7 @@ export async function executeComplianceTool(name, args) {
     record.hash = hash;
 
     const tx = await new TopicMessageSubmitTransaction()
-      .setTopicId(args.topic_id)
+      .setTopicId(topicId)
       .setMessage(JSON.stringify(record))
       .execute(client);
 
@@ -105,7 +108,7 @@ export async function executeComplianceTool(name, args) {
     return {
       success: true,
       record_id: record.record_id,
-      topic_id: args.topic_id,
+      topic_id: topicId,
       entity_id: args.entity_id,
       record_type: args.record_type,
       hash,
@@ -120,9 +123,10 @@ export async function executeComplianceTool(name, args) {
   if (name === "hcs_verify_record") {
     const payment = chargeForTool("hcs_verify_record", args.api_key);
     const base = getMirrorNodeBase();
+    const topicId = args.topic_id || PLATFORM_TOPIC;
 
     const response = await axios.get(
-      `${base}/api/v1/topics/${args.topic_id}/messages?limit=100&order=asc`
+      `${base}/api/v1/topics/${topicId}/messages?limit=100&order=asc`
     );
 
     const messages = response.data.messages || [];
@@ -160,6 +164,7 @@ export async function executeComplianceTool(name, args) {
       return {
         verified: false,
         record_id: args.record_id,
+        topic_id: topicId,
         error: "Record not found on blockchain",
         payment,
       };
@@ -169,6 +174,7 @@ export async function executeComplianceTool(name, args) {
       verified: true,
       tampered: foundRecord.tampered,
       hash_valid: foundRecord.hash_valid,
+      topic_id: topicId,
       ...foundRecord,
       payment,
       timestamp: new Date().toISOString(),
@@ -178,10 +184,11 @@ export async function executeComplianceTool(name, args) {
   if (name === "hcs_audit_trail") {
     const payment = chargeForTool("hcs_audit_trail", args.api_key);
     const base = getMirrorNodeBase();
+    const topicId = args.topic_id || PLATFORM_TOPIC;
     const limit = args.limit || 50;
 
     const response = await axios.get(
-      `${base}/api/v1/topics/${args.topic_id}/messages?limit=100&order=asc`
+      `${base}/api/v1/topics/${topicId}/messages?limit=100&order=asc`
     );
 
     const messages = response.data.messages || [];
@@ -208,7 +215,7 @@ export async function executeComplianceTool(name, args) {
 
     return {
       entity_id: args.entity_id,
-      topic_id: args.topic_id,
+      topic_id: topicId,
       total_records: trail.length,
       audit_trail: trail.slice(0, limit),
       payment,
