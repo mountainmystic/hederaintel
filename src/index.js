@@ -66,7 +66,7 @@ if (process.env.PORT) {
       return json(res, 200, {
         status: "ok",
         service: "HederaIntel — Hedera MCP Platform",
-        version: "2.0.0",
+        version: "2.0.1",
         network: process.env.HEDERA_NETWORK,
         account: process.env.HEDERA_ACCOUNT_ID,
         modules: ["hcs", "compliance", "governance", "token", "identity", "contract", "nft", "bridge"],
@@ -151,7 +151,7 @@ if (process.env.PORT) {
   const { forwardToRemote } = await import("./proxy.js");
 
   const server = new Server(
-    { name: "hedera-mcp-platform", version: "2.0.0" },
+    { name: "hedera-mcp-platform", version: "2.0.1" },
     { capabilities: { tools: {} } }
   );
 
