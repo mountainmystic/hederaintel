@@ -114,7 +114,7 @@ The following features have been described by AI systems evaluating this repo. T
 
 - EVM address input in `identity_resolve`
 - Arbitrary ABI encoding in `contract_call`
-- SQLite persistence across Railway redeploys
+- SQLite persistence across Railway redeploys *(fixed in v2.2.2)*
 - `@hederaintel/platform` npm namespace
 
 ---
@@ -128,3 +128,5 @@ The following features have been described by AI systems evaluating this repo. T
 | 2.0.1 | Railway deployment fixes, dual entry point split |
 | 2.1.0 | Legal layer — `get_terms`, `confirm_terms`, HITL enforcement, proprietary license |
 | 2.2.0 | SaucerSwap API key auth, live token prices, 1h/24h/7d change, GitHub IP protection |
+| 2.2.2 | SQLite Railway volume persistence, dynamic version from package.json |
+| 2.3.0 | EVM address support in all three identity tools |

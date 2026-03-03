@@ -8,14 +8,38 @@ function getMirrorNodeBase() {
     : "https://testnet.mirrornode.hedera.com";
 }
 
+// Resolve EVM address (0x...) or Hedera ID (0.0.X) to a canonical Hedera account ID.
+// Returns { hederaId, evmAddress, inputType }
+async function resolveAccountInput(input, base) {
+  const isEVM = /^0x[0-9a-fA-F]{40}$/.test(input);
+  if (isEVM) {
+    const res = await axios.get(`${base}/api/v1/accounts/${input}`);
+    const account = res.data;
+    return {
+      hederaId: account.account,
+      evmAddress: input.toLowerCase(),
+      inputType: "evm_address",
+    };
+  }
+  // Native Hedera ID — look up the EVM address from the response
+  const res = await axios.get(`${base}/api/v1/accounts/${input}`);
+  const account = res.data;
+  return {
+    hederaId: input,
+    evmAddress: account.evm_address || null,
+    inputType: "hedera_id",
+    _account: account, // cache to avoid double fetch
+  };
+}
+
 export const IDENTITY_TOOL_DEFINITIONS = [
   {
     name: "identity_resolve",
-    description: "Resolve a Hedera account ID to its on-chain identity profile including account age, token holdings, transaction history, and any HCS-based identity records. Costs 0.1 HBAR.",
+    description: "Resolve a Hedera account ID or EVM address to its on-chain identity profile including account age, token holdings, transaction history, and any HCS-based identity records. Accepts both Hedera native IDs (0.0.123456) and EVM addresses (0x...). Costs 0.1 HBAR.",
     inputSchema: {
       type: "object",
       properties: {
-        account_id: { type: "string", description: "Hedera account ID to resolve (e.g. 0.0.123456)" },
+        account_id: { type: "string", description: "Hedera account ID (e.g. 0.0.123456) or EVM address (e.g. 0x1234...)" },
         api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["account_id", "api_key"],
@@ -23,11 +47,11 @@ export const IDENTITY_TOOL_DEFINITIONS = [
   },
   {
     name: "identity_verify_kyc",
-    description: "Check the KYC status of a Hedera account for one or more tokens. Returns KYC grant status and verification history. Costs 0.2 HBAR.",
+    description: "Check the KYC status of a Hedera account for one or more tokens. Returns KYC grant status and verification history. Accepts both Hedera native IDs (0.0.123456) and EVM addresses (0x...). Costs 0.2 HBAR.",
     inputSchema: {
       type: "object",
       properties: {
-        account_id: { type: "string", description: "Hedera account ID to check KYC for" },
+        account_id: { type: "string", description: "Hedera account ID (e.g. 0.0.123456) or EVM address (0x...)" },
         token_id: { type: "string", description: "Optional token ID to check KYC status for a specific token" },
         api_key: { type: "string", description: "Your HederaIntel API key" },
       },
@@ -36,11 +60,11 @@ export const IDENTITY_TOOL_DEFINITIONS = [
   },
   {
     name: "identity_check_sanctions",
-    description: "Screen a Hedera account against on-chain risk signals including transaction patterns, counterparty risk, and known flagged accounts. Costs 0.5 HBAR.",
+    description: "Screen a Hedera account against on-chain risk signals including transaction patterns, counterparty risk, and known flagged accounts. Accepts both Hedera native IDs (0.0.123456) and EVM addresses (0x...). Costs 0.5 HBAR.",
     inputSchema: {
       type: "object",
       properties: {
-        account_id: { type: "string", description: "Hedera account ID to screen" },
+        account_id: { type: "string", description: "Hedera account ID (e.g. 0.0.123456) or EVM address (0x...)" },
         api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["account_id", "api_key"],
@@ -55,25 +79,29 @@ export async function executeIdentityTool(name, args) {
     const payment = chargeForTool("identity_resolve", args.api_key);
     const base = getMirrorNodeBase();
 
-    // Fetch account info
-    const accountRes = await axios.get(`${base}/api/v1/accounts/${args.account_id}`);
-    const account = accountRes.data;
+    // Resolve EVM address or Hedera ID
+    const resolved = await resolveAccountInput(args.account_id, base);
+    const hederaId = resolved.hederaId;
+
+    // Use cached account data if available from resolution
+    const account = resolved._account ||
+      (await axios.get(`${base}/api/v1/accounts/${hederaId}`)).data;
 
     // Fetch token balances
     const tokenRes = await axios.get(
-      `${base}/api/v1/accounts/${args.account_id}/tokens?limit=50&order=desc`
+      `${base}/api/v1/accounts/${hederaId}/tokens?limit=50&order=desc`
     ).catch(() => ({ data: { tokens: [] } }));
     const tokens = tokenRes.data.tokens || [];
 
     // Fetch recent transactions
     const txRes = await axios.get(
-      `${base}/api/v1/transactions?account.id=${args.account_id}&limit=25&order=desc`
+      `${base}/api/v1/transactions?account.id=${hederaId}&limit=25&order=desc`
     ).catch(() => ({ data: { transactions: [] } }));
     const transactions = txRes.data.transactions || [];
 
     // Fetch NFT holdings
     const nftRes = await axios.get(
-      `${base}/api/v1/accounts/${args.account_id}/nfts?limit=25&order=desc`
+      `${base}/api/v1/accounts/${hederaId}/nfts?limit=25&order=desc`
     ).catch(() => ({ data: { nfts: [] } }));
     const nfts = nftRes.data.nfts || [];
 
@@ -97,9 +125,11 @@ export async function executeIdentityTool(name, args) {
       : null;
 
     return {
-      account_id: args.account_id,
+      account_id: hederaId,
+      input: args.account_id,
+      input_type: resolved.inputType,
       alias: account.alias || null,
-      evm_address: account.evm_address || null,
+      evm_address: resolved.evmAddress || account.evm_address || null,
       hbar_balance: account.balance?.balance
         ? (account.balance.balance / 100000000).toFixed(4) + " HBAR"
         : "unknown",
@@ -135,9 +165,12 @@ export async function executeIdentityTool(name, args) {
     const payment = chargeForTool("identity_verify_kyc", args.api_key);
     const base = getMirrorNodeBase();
 
+    const resolved = await resolveAccountInput(args.account_id, base);
+    const hederaId = resolved.hederaId;
+
     // Fetch account token relationships
     const tokenRes = await axios.get(
-      `${base}/api/v1/accounts/${args.account_id}/tokens?limit=100&order=desc`
+      `${base}/api/v1/accounts/${hederaId}/tokens?limit=100&order=desc`
     ).catch(() => ({ data: { tokens: [] } }));
     const tokens = tokenRes.data.tokens || [];
 
@@ -159,12 +192,14 @@ export async function executeIdentityTool(name, args) {
     const notApplicableCount = kycResults.filter(r => r.kyc_status === "NOT_APPLICABLE").length;
 
     // Fetch account info for context
-    const accountRes = await axios.get(`${base}/api/v1/accounts/${args.account_id}`)
+    const accountRes = await axios.get(`${base}/api/v1/accounts/${hederaId}`)
       .catch(() => ({ data: {} }));
     const account = accountRes.data;
 
     return {
-      account_id: args.account_id,
+      account_id: hederaId,
+      input: args.account_id,
+      input_type: resolved.inputType,
       token_filter: args.token_id || null,
       total_token_relationships: tokens.length,
       kyc_summary: {
@@ -190,19 +225,22 @@ export async function executeIdentityTool(name, args) {
     const payment = chargeForTool("identity_check_sanctions", args.api_key);
     const base = getMirrorNodeBase();
 
-    // Fetch account info
-    const accountRes = await axios.get(`${base}/api/v1/accounts/${args.account_id}`);
-    const account = accountRes.data;
+    const resolved = await resolveAccountInput(args.account_id, base);
+    const hederaId = resolved.hederaId;
+
+    // Fetch account info (use cached from resolution if available)
+    const account = resolved._account ||
+      (await axios.get(`${base}/api/v1/accounts/${hederaId}`)).data;
 
     // Fetch recent transactions for pattern analysis
     const txRes = await axios.get(
-      `${base}/api/v1/transactions?account.id=${args.account_id}&limit=100&order=desc`
+      `${base}/api/v1/transactions?account.id=${hederaId}&limit=100&order=desc`
     ).catch(() => ({ data: { transactions: [] } }));
     const transactions = txRes.data.transactions || [];
 
     // Fetch token balances
     const tokenRes = await axios.get(
-      `${base}/api/v1/accounts/${args.account_id}/tokens?limit=100`
+      `${base}/api/v1/accounts/${hederaId}/tokens?limit=100`
     ).catch(() => ({ data: { tokens: [] } }));
     const tokens = tokenRes.data.tokens || [];
 
@@ -217,7 +255,7 @@ export async function executeIdentityTool(name, args) {
       txTypes[t] = (txTypes[t] || 0) + 1;
       if (tx.result && tx.result !== "SUCCESS") failedTxCount++;
       for (const transfer of tx.transfers || []) {
-        if (transfer.account !== args.account_id) {
+        if (transfer.account !== hederaId) {
           counterparties.add(transfer.account);
         }
         if (Math.abs(transfer.amount || 0) > 100000000000) {
@@ -282,7 +320,9 @@ export async function executeIdentityTool(name, args) {
     const riskLevel = riskScore >= 50 ? "HIGH" : riskScore >= 20 ? "MEDIUM" : "LOW";
 
     return {
-      account_id: args.account_id,
+      account_id: hederaId,
+      input: args.account_id,
+      input_type: resolved.inputType,
       screening_result: riskLevel === "HIGH" ? "FLAGGED" : riskLevel === "MEDIUM" ? "REVIEW" : "CLEAR",
       risk_score: riskScore,
       risk_level: riskLevel,
