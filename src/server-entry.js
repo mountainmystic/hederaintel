@@ -10,6 +10,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TERMS = JSON.parse(readFileSync(path.join(__dirname, "../legal/terms.json"), "utf-8"));
+const { version: VERSION } = JSON.parse(readFileSync(path.join(__dirname, "../package.json"), "utf-8"));
 import { startWatcher } from "./watcher.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import http from "http";
@@ -50,7 +51,7 @@ const httpServer = http.createServer(async (req, res) => {
     return json(res, 200, {
       status: "ok",
       service: "HederaIntel — Hedera MCP Platform",
-      version: "2.0.1",
+      version: VERSION,
       network: process.env.HEDERA_NETWORK,
       account: process.env.HEDERA_ACCOUNT_ID,
       modules: ["hcs", "compliance", "governance", "token", "identity", "contract", "nft", "bridge"],
