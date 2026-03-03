@@ -228,15 +228,13 @@ Node.js 22.5.0 or higher required (uses `node:sqlite`).
 
 ---
 
-## Roadmap
+## What's New in v2.5.0
 
-- [x] EVM address support in all identity tools — `0x...` input accepted natively (v2.3.0)
-- [x] SQLite persisted to Railway volume — survives redeploys (v2.2.2)
-- [x] `@hederaintel/platform` npm namespace (v2.5.0)
-- [x] Arbitrary ABI encoding in `contract_call` — any function, any params (v2.4.0)
-- [ ] Developer portal — balance top-up UI, usage dashboard
-- [ ] Webhook subscriptions — real-time HCS topic monitoring
-- [ ] `contract_call` tuple / array return type decoding
+- **EVM address support** — all identity and contract tools accept `0x...` addresses directly
+- **Arbitrary ABI encoding** — `contract_call` works with any function and any parameter types
+- **Live HBAR/USD pricing** — `account_info` shows real-time USD cost for every tool
+- **Persistent balances** — credits survive Railway redeploys via volume storage
+- **`@hederaintel/platform`** — new npm namespace (migrated from `hedera-mcp-platform`)
 
 ---
 
