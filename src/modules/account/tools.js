@@ -1,20 +1,21 @@
 // modules/account/tools.js - Account info and onboarding tool
 // This is the agent onboarding entrypoint. Free to call, no API key required.
 // An agent that finds this MCP server for the first time calls this tool,
-// gets the platform wallet address and pricing, sends HBAR, and is ready to go.
+// gets the platform wallet address, live pricing in HBAR and USD, sends HBAR, and is ready to go.
 
 import { COSTS } from "../../payments.js";
 import { getBalance, getAccount } from "../../db.js";
+import { getHbarPriceUsd, formatUsdCost } from "../../hbar-price.js";
 
 export const ACCOUNT_TOOL_DEFINITIONS = [
   {
     name: "account_info",
     description:
-      "Get platform wallet address, pricing for all tools, and your current balance. " +
+      "Get platform wallet address, pricing for all 29 tools in HBAR and USD, and your current balance. " +
       "FREE to call — no API key required. " +
       "Use this tool first to discover how to fund an account and start using the platform. " +
       "To create an account automatically, simply send HBAR to the platform wallet — " +
-      "your Hedera account ID becomes your API key within 30 seconds.",
+      "your Hedera account ID becomes your API key automatically.",
     inputSchema: {
       type: "object",
       properties: {
@@ -35,23 +36,35 @@ export async function executeAccountTool(name, args) {
   throw new Error(`Unknown account tool: ${name}`);
 }
 
-function getAccountInfo(args) {
+async function getAccountInfo(args) {
   const { api_key } = args || {};
 
-  // Build pricing table grouped by tier
-  const pricing = Object.entries(COSTS).map(([tool, cost]) => ({
-    tool,
-    cost_hbar: cost.hbar,
-  }));
+  // Fetch live HBAR/USD price (cached, 5 min TTL)
+  const hbarPriceUsd = await getHbarPriceUsd();
+
+  // Build pricing table with live USD equivalents
+  const pricing = Object.entries(COSTS).map(([tool, cost]) => {
+    const hbarAmount = parseFloat(cost.hbar);
+    const entry = {
+      tool,
+      cost_hbar: cost.hbar,
+      cost_usd: formatUsdCost(hbarAmount, hbarPriceUsd),
+    };
+    return entry;
+  });
 
   // Check balance if an api_key was provided
   let balanceInfo = null;
   if (api_key) {
     const account = getAccount(api_key);
     if (account) {
+      const balanceHbar = (account.balance_tinybars / 100_000_000);
       balanceInfo = {
         api_key,
-        balance_hbar: (account.balance_tinybars / 100_000_000).toFixed(4),
+        balance_hbar: balanceHbar.toFixed(4),
+        balance_usd: hbarPriceUsd
+          ? `~$${(balanceHbar * hbarPriceUsd).toFixed(2)}`
+          : null,
         hedera_account_id: account.hedera_account_id,
         created_at: account.created_at,
         last_used: account.last_used,
@@ -69,9 +82,12 @@ function getAccountInfo(args) {
     service: "HederaIntel — Hedera MCP Platform",
     description: "29 tools across 9 modules. Pay per call in HBAR. No registration required.",
 
+    hbar_price_usd: hbarPriceUsd ? `$${hbarPriceUsd.toFixed(4)}` : "unavailable",
+    hbar_price_source: "SaucerSwap DEX (live, 5-min cache)",
+
     how_to_fund: {
       step_1: "Send any amount of HBAR to the platform wallet below.",
-      step_2: "Your Hedera account ID becomes your API key automatically within 30 seconds.",
+      step_2: "Your Hedera account ID becomes your API key automatically.",
       step_3: "Pass your Hedera account ID as the api_key parameter in any tool call.",
       step_4: "Call account_info with your api_key at any time to check your balance.",
       minimum_deposit: "No minimum. Even 1 HBAR gives you many tool calls.",

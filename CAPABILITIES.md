@@ -130,3 +130,4 @@ The following features have been described by AI systems evaluating this repo. T
 | 2.2.0 | SaucerSwap API key auth, live token prices, 1h/24h/7d change, GitHub IP protection |
 | 2.2.2 | SQLite Railway volume persistence, dynamic version from package.json |
 | 2.3.0 | EVM address support in all three identity tools |
+| 2.3.1 | Live HBAR/USD pricing in account_info via SaucerSwap (5-min cache) |
