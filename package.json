@@ -26,17 +26,26 @@
     "dotenv": "^16.4.5"
   },
   "keywords": [
+    "hederaintel",
+    "hedera-intelligence",
     "hedera",
     "mcp",
+    "model-context-protocol",
     "blockchain",
     "ai-agent",
     "hbar",
     "hcs",
+    "hedera-consensus-service",
     "token",
     "nft",
     "defi",
-    "model-context-protocol",
-    "hedera-hashgraph"
+    "hedera-hashgraph",
+    "hitl",
+    "human-in-the-loop",
+    "smart-contract",
+    "identity",
+    "compliance",
+    "governance"
   ],
   "author": "mountainmystic",
   "license": "Proprietary"
