@@ -51,18 +51,6 @@ Credits are persistent. Unused balance carries over indefinitely.
 
 ---
 
-## What It Does Not Do
-
-HederaIntel is a **read and intelligence platform**. To prevent ambiguity:
-
-- Does not transfer HBAR or tokens on your behalf
-- Does not deploy smart contracts
-- Does not execute swaps or trades
-- Does not integrate with DOVU, Hashpack, or any third-party wallet
-- Reads, analyzes, queries, and writes compliance records only
-
----
-
 ## Enterprise Safety — HITL Enforcement
 
 All safety controls run **server-side**. They cannot be bypassed by modifying the npm package.
@@ -183,7 +171,7 @@ Accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`).
 AI Agent
     | MCP (stdio or Streamable HTTP)
     v
-hedera-mcp-platform (npm, ~15 KB)
+@hederaintel/platform (npm, ~15 KB)
     | tool schemas + HTTPS proxy — zero business logic
     v HTTPS
 HederaIntel Remote Brain (Railway, proprietary)
@@ -201,34 +189,7 @@ The npm package contains no business logic — only tool schemas and a proxy. In
 
 ---
 
-## Self-Hosting
-
-Requires your own Hedera operator account, Anthropic API key, and SaucerSwap API key.
-
-```bash
-git clone https://github.com/mountainmystic/hederaintel.git
-cd hederaintel
-npm install
-cp .env.example .env
-npm run server
-```
-
-Node.js 22.5.0 or higher required (uses `node:sqlite`).
-
-| Variable | Description | Required |
-|---|---|---|
-| `HEDERA_ACCOUNT_ID` | Operator account | Yes |
-| `HEDERA_PRIVATE_KEY` | ECDSA private key | Yes |
-| `HEDERA_NETWORK` | `mainnet` or `testnet` | Yes |
-| `ANTHROPIC_API_KEY` | Claude Haiku for AI analysis tools | Yes |
-| `SAUCERSWAP_API_KEY` | Live token price data | Yes |
-| `HITL_WEBHOOK_URL` | Webhook for notify-tier events | No |
-| `APPROVAL_BASE_URL` | Base URL for hard-stop approval links | No |
-| `ADMIN_SECRET` | Admin endpoint header secret | No |
-
----
-
-## What's New in v2.5.0
+## What's New in v2.5.1
 
 - **EVM address support** — all identity and contract tools accept `0x...` addresses directly
 - **Arbitrary ABI encoding** — `contract_call` works with any function and any parameter types
