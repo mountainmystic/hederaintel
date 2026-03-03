@@ -2,9 +2,9 @@
 
 > The intelligence layer for AI agents on Hedera.
 
-**29 tools. 9 modules. Pay per call in HBAR. No registration.**
+**24 tools. 8 modules. Pay per call in HBAR. No registration.**
 
-HederaIntel is a production [Model Context Protocol](https://modelcontextprotocol.io) server. It gives AI agents structured, metered access to the full Hedera ecosystem — HCS topics, tokens, DeFi, identity, smart contracts, NFTs, governance, compliance, and cross-chain bridges.
+HederaIntel is a production [Model Context Protocol](https://modelcontextprotocol.io) server. It gives AI agents structured, metered access to the full Hedera ecosystem — HCS topics, tokens, DeFi, identity, smart contracts, NFTs, governance, and compliance.
 
 Built for agents that need to *reason* about Hedera, not just interact with it.
 
@@ -60,7 +60,6 @@ HITL is enforced on **operation type**, not balance size. HederaIntel is a read 
 | Trigger | Tier | Behaviour |
 |---|---|---|
 | Any tool call | Consent gate | `confirm_terms` required |
-| `governance_vote` | Hard stop | Blocked — human must approve via URL before vote is cast |
 | `hcs_write_record` | Notify | Executes immediately — webhook notification sent to operator |
 | Same tool >20 calls in 60s | Loop guard | Blocked — agent must wait 60s |
 | All other tools | Auto | Executes immediately |
@@ -109,7 +108,6 @@ Terms of Service: `get_terms` tool or [/public/terms.json](https://hedera-mcp-pl
 |------|------|-------------|
 | `governance_monitor` | 0.10 HBAR | Active proposals, deadlines, current vote tallies |
 | `governance_analyze` | 0.50 HBAR | Voter sentiment, participation rate, outcome prediction |
-| `governance_vote` | 2.00 HBAR | Cast on-chain vote via HCS (permanent record) |
 
 ---
 
@@ -157,15 +155,6 @@ Accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`).
 
 ---
 
-### Module 8 — Bridge Intelligence
-
-| Tool | Cost | Description |
-|------|------|-------------|
-| `bridge_status` | 0.10 HBAR | Bridge health, contracts, wrapped token registry |
-| `bridge_transfers` | 0.20 HBAR | Recent activity, volume, counterparty analysis |
-| `bridge_analyze` | 0.50 HBAR | Peg stability, mint/burn ratio, custodian concentration |
-
----
 
 ## Architecture
 
@@ -203,7 +192,6 @@ The npm package contains no business logic — only tool schemas and a proxy. In
 
 ## Known Limitations
 
-- `contract_call` tuple and array return types are not yet decoded — raw hex returned instead.
 - Mirror node balance endpoint occasionally returns empty for high-holder tokens. Metadata unaffected.
 
 ---
