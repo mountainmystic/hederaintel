@@ -8,7 +8,7 @@ HederaIntel is a production [Model Context Protocol](https://modelcontextprotoco
 
 Built for agents that need to *reason* about Hedera, not just interact with it.
 
-[![npm](https://img.shields.io/npm/v/hedera-mcp-platform)](https://www.npmjs.com/package/hedera-mcp-platform)
+[![npm](https://img.shields.io/npm/v/@hederaintel/platform)](https://www.npmjs.com/package/@hederaintel/platform)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-listed-blue)](https://registry.modelcontextprotocol.io)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE.md)
 [![HITL](https://img.shields.io/badge/Safety-HITL%20Enforced-green.svg)](SECURITY.md)
@@ -230,17 +230,19 @@ Node.js 22.5.0 or higher required (uses `node:sqlite`).
 
 ## Roadmap
 
-- [ ] EVM address support in `identity_resolve` — accept `0x...` input natively
-- [ ] Persist SQLite to Railway volume — survive redeploys without consent reset
+- [x] EVM address support in all identity tools — `0x...` input accepted natively (v2.3.0)
+- [x] SQLite persisted to Railway volume — survives redeploys (v2.2.2)
+- [x] `@hederaintel/platform` npm namespace (v2.5.0)
+- [x] Arbitrary ABI encoding in `contract_call` — any function, any params (v2.4.0)
 - [ ] Developer portal — balance top-up UI, usage dashboard
 - [ ] Webhook subscriptions — real-time HCS topic monitoring
-- [ ] `@hederaintel/platform` npm namespace migration
+- [ ] `contract_call` tuple / array return type decoding
 
 ---
 
 ## Known Limitations
 
-- `contract_call` uses a fixed function selector list. Arbitrary ABI encoding in a future release.
+- `contract_call` tuple and array return types are not yet decoded — raw hex returned instead.
 - Mirror node balance endpoint occasionally returns empty for high-holder tokens. Metadata unaffected.
 
 ---
@@ -249,8 +251,8 @@ Node.js 22.5.0 or higher required (uses `node:sqlite`).
 
 | | |
 |---|---|
-| npm | https://www.npmjs.com/package/hedera-mcp-platform |
-| MCP Registry | https://registry.modelcontextprotocol.io — search `hedera-mcp-platform` |
+| npm | https://www.npmjs.com/package/@hederaintel/platform |
+| MCP Registry | https://registry.modelcontextprotocol.io — search `hederaintel` |
 | Live endpoint | https://hedera-mcp-platform-production.up.railway.app/mcp |
 | Terms | https://hedera-mcp-platform-production.up.railway.app/terms |
 | Health | https://hedera-mcp-platform-production.up.railway.app/health |

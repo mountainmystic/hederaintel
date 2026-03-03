@@ -106,7 +106,7 @@ async function getAccountInfo(args) {
 
     links: {
       mcp_endpoint: "https://hedera-mcp-platform-production.up.railway.app/mcp",
-      npm: "https://www.npmjs.com/package/hedera-mcp-platform",
+      npm: "https://www.npmjs.com/package/@hederaintel/platform",
     },
   };
 }
