@@ -2,7 +2,7 @@
 
 > This document is the authoritative, versioned record of what HederaIntel can and cannot do.
 > It is written for AI agents, developers, and enterprise evaluators.
-> Version: 2.2.0 | Updated: 2026-03-02
+> Version: 2.8.1 | Updated: 2026-03-03
 
 ---
 
@@ -14,7 +14,7 @@ It allows AI agents to query, analyze, and write compliance records to Hedera. I
 
 ---
 
-## Confirmed Capabilities (v2.2.0)
+## Confirmed Capabilities (v2.8.1)
 
 ### Payments and Onboarding
 - Accept HBAR deposits to a platform wallet and auto-provision API keys
@@ -35,7 +35,6 @@ It allows AI agents to query, analyze, and write compliance records to Hedera. I
 ### Governance Intelligence
 - List active governance proposals with deadlines and current vote tallies
 - Analyze voter sentiment, participation rate, token concentration, and predicted outcomes
-- Cast on-chain governance votes via HCS (permanent, signed record)
 
 ### Token and DeFi Intelligence
 - Return live spot price, 1h/24h/7d price change, and liquidity for any SaucerSwap-listed token
@@ -62,22 +61,14 @@ It allows AI agents to query, analyze, and write compliance records to Hedera. I
 - Return top token holders with concentration metrics and whale detection
 - Analyze collection-level holder distribution, transfer velocity, and rarity signals
 
-### Bridge Intelligence
-- Return bridge infrastructure status, known bridge contracts, wrapped token registry
-- Return recent bridge transfer activity with volume and counterparty analysis
-- Analyze peg stability, mint/burn ratio, and custodian concentration risk
-
 ---
 
-## Confirmed Limitations (v2.2.0)
+## Confirmed Limitations (v2.8.1)
 
 | Area | Limitation |
 |---|---|
-| `contract_call` | Only supports a fixed selector list. Arbitrary ABI function encoding not yet implemented. |
 | `token_price` | Only returns prices for tokens listed on SaucerSwap. Unlisted tokens return metadata only. |
-| `identity_resolve` | Accepts Hedera account IDs only. EVM address (`0x...`) input planned for v2.3.0. |
 | Mirror node holders | Balance endpoint returns empty for some high-holder tokens due to mirror node pagination. Metadata unaffected. |
-| SQLite persistence | Database resets on Railway redeploy. Consent must be re-confirmed after each deploy until volume storage is implemented. |
 | No wallet integration | Cannot interact with Hashpack, MetaMask, Blade, or any external wallet. |
 | No token transfers | Cannot send or receive HBAR or HTS tokens on behalf of users. |
 | No contract deployment | Cannot deploy, upgrade, or delete smart contracts. |
@@ -110,12 +101,11 @@ The following features have been described by AI systems evaluating this repo. T
 
 ---
 
-## Roadmap (Next Release — v2.3.0)
+## Roadmap
 
-- EVM address input in `identity_resolve`
-- Arbitrary ABI encoding in `contract_call`
-- SQLite persistence across Railway redeploys *(fixed in v2.2.2)*
-- `@hederaintel/platform` npm namespace
+- Demo agent script showing end-to-end agent workflow
+- Developer portal / admin dashboard *(shipped in v2.8.0)*
+- hederaintel.com domain configuration
 
 ---
 
