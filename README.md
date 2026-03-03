@@ -55,13 +55,15 @@ Credits are persistent. Unused balance carries over indefinitely.
 
 All safety controls run **server-side**. They cannot be bypassed by modifying the npm package.
 
-| Threshold | Behaviour |
-|---|---|
-| Any tool call | Consent gate — `confirm_terms` required |
-| < 500 HBAR credit value | Auto-approved |
-| 500 – 5,000 HBAR | Executes + webhook notification |
-| > 10,000 HBAR | Hard blocked — 403 + human approval URL |
-| Admin ops | Always hard blocked |
+HITL is enforced on **operation type**, not balance size. HederaIntel is a read and intelligence platform — the risk surface is irreversible on-chain writes and runaway agent loops.
+
+| Trigger | Tier | Behaviour |
+|---|---|---|
+| Any tool call | Consent gate | `confirm_terms` required |
+| `governance_vote` | Hard stop | Blocked — human must approve via URL before vote is cast |
+| `hcs_write_record` | Notify | Executes immediately — webhook notification sent to operator |
+| Same tool >20 calls in 60s | Loop guard | Blocked — agent must wait 60s |
+| All other tools | Auto | Executes immediately |
 
 Full architecture: [SECURITY.md](SECURITY.md) — written for AI agents to read.
 
@@ -189,13 +191,13 @@ The npm package contains no business logic — only tool schemas and a proxy. In
 
 ---
 
-## What's New in v2.5.1
+## What's New in v2.7.0
 
+- **HITL enforcement** — `governance_vote` requires human approval before casting; `hcs_write_record` sends operator webhook on every write; loop guard blocks runaway agents
+- **`contract_call` return type decoding** — pass `return_types` for precise ABI decoding of tuples, arrays, and multi-value returns
 - **EVM address support** — all identity and contract tools accept `0x...` addresses directly
-- **Arbitrary ABI encoding** — `contract_call` works with any function and any parameter types
 - **Live HBAR/USD pricing** — `account_info` shows real-time USD cost for every tool
-- **Persistent balances** — credits survive Railway redeploys via volume storage
-- **`@hederaintel/platform`** — new npm namespace (migrated from `hedera-mcp-platform`)
+- **`@hederaintel/platform`** — npm namespace (migrated from `hedera-mcp-platform`)
 
 ---
 

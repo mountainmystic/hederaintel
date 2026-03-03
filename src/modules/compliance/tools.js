@@ -8,6 +8,7 @@ import {
 import axios from "axios";
 import crypto from "crypto";
 import { chargeForTool } from "../../payments.js";
+import { enforceHITL } from "../../hitl.js";
 
 let hederaClient;
 
@@ -34,7 +35,7 @@ const PLATFORM_TOPIC = process.env.HCS_COMPLIANCE_TOPIC_ID || "0.0.10305125";
 export const COMPLIANCE_TOOL_DEFINITIONS = [
   {
     name: "hcs_write_record",
-    description: "Write a tamper-evident compliance record to the Hedera blockchain. Returns a record ID and transaction proof. If no topic_id is provided, writes to the shared HederaIntel platform topic. Costs 2 HBAR.",
+    description: "Write a tamper-evident compliance record to the Hedera blockchain. Returns a record ID and transaction proof. If no topic_id is provided, writes to the shared HederaIntel platform topic. Sends a webhook notification on every write. Costs 2 HBAR.",
     inputSchema: {
       type: "object",
       properties: {
@@ -78,6 +79,9 @@ export const COMPLIANCE_TOOL_DEFINITIONS = [
 
 export async function executeComplianceTool(name, args) {
   if (name === "hcs_write_record") {
+    // HITL notify tier — executes immediately but sends webhook notification
+    await enforceHITL("hcs_write_record", args.api_key, "2.0000");
+
     const payment = chargeForTool("hcs_write_record", args.api_key);
     const client = getClient();
     const topicId = args.topic_id || PLATFORM_TOPIC;

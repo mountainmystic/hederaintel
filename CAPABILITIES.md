@@ -133,3 +133,5 @@ The following features have been described by AI systems evaluating this repo. T
 | 2.3.1 | Live HBAR/USD pricing in account_info via SaucerSwap (5-min cache) |
 | 2.4.0 | contract_call arbitrary ABI encoding — any function, any params, dynamic selector |
 | 2.5.0 | npm namespace migration to @hederaintel/platform |
+| 2.6.0 | contract_call return_types param, ethers ABI decode for tuples and arrays |
+| 2.7.0 | HITL enforcement implemented: governance_vote hard stop, hcs_write_record notify, loop guard |

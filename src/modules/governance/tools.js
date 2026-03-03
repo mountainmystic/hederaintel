@@ -1,6 +1,7 @@
 // governance/tools.js - Governance Intelligence tool definitions and handlers
 import axios from "axios";
 import { chargeForTool } from "../../payments.js";
+import { enforceHITL } from "../../hitl.js";
 
 function getMirrorNodeBase() {
   return process.env.HEDERA_NETWORK === "mainnet"
@@ -38,7 +39,7 @@ export const GOVERNANCE_TOOL_DEFINITIONS = [
   },
   {
     name: "governance_vote",
-    description: "Cast a governance vote on-chain via HCS, permanently recording your vote for a proposal. Costs 2 HBAR.",
+    description: "Cast a governance vote on-chain via HCS, permanently recording your vote for a proposal. REQUIRES HUMAN APPROVAL — this is an irreversible on-chain write. A human operator must approve via the returned URL before the vote is cast. Costs 2 HBAR.",
     inputSchema: {
       type: "object",
       properties: {
@@ -235,6 +236,12 @@ export async function executeGovernanceTool(name, args) {
 
   // --- governance_vote ---
   if (name === "governance_vote") {
+    // HITL hard stop — must be approved by a human before executing
+    const hitl = await enforceHITL("governance_vote", args.api_key, "2.0000");
+    if (!hitl.proceed) {
+      throw new Error(hitl.error);
+    }
+
     const payment = chargeForTool("governance_vote", args.api_key);
 
     const validVotes = ["yes", "no", "abstain"];

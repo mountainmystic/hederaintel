@@ -4,7 +4,7 @@
   "service": {
     "name": "HederaIntel MCP Platform",
     "provider": "mountainmystic",
-    "version": "2.1.0",
+    "version": "2.7.0",
     "terms_version": "1.0.0",
     "effective_date": "2026-03-01",
     "jurisdiction": "British Columbia, Canada",
@@ -87,20 +87,29 @@
     ]
   },
   "human_in_the_loop": {
-    "description": "HITL thresholds are enforced server-side to protect users from large unintended transactions.",
+    "description": "HITL is enforced on operation type, not balance size. HederaIntel is a read and intelligence platform. The risk surface is irreversible on-chain writes and runaway agent loops.",
+    "enforcement": "server-side — cannot be bypassed by modifying the npm package",
     "tiers": {
-      "auto_approve": {
-        "threshold_hbar": "< 500",
-        "action": "Execute immediately, no human approval required."
+      "consent_gate": {
+        "trigger": "Every tool call",
+        "action": "confirm_terms must have been called for the current terms version. Rejected otherwise."
       },
-      "notify_only": {
-        "threshold_hbar": "500 – 5000",
-        "action": "Execute immediately, then send a webhook notification to the registered endpoint."
+      "auto": {
+        "trigger": "All read and analysis tools",
+        "action": "Execute immediately. No HITL."
+      },
+      "notify": {
+        "trigger": "hcs_write_record",
+        "action": "Executes immediately. Webhook notification sent to HITL_WEBHOOK_URL if configured."
       },
       "hard_stop": {
-        "threshold_hbar": "> 10000",
-        "action": "Blocked. Returns HTTP 403 with a unique human-approval URL. No execution until approved.",
-        "also_applies_to": "Administrative smart contract calls (e.g. updateAdminKey, deleteAccount)"
+        "trigger": "governance_vote",
+        "action": "Blocked. Agent receives a unique approval URL. A human must visit the URL to approve before the vote can be cast.",
+        "rationale": "DAO votes are permanent and irreversible on-chain. Agent-only execution is not permitted."
+      },
+      "loop_guard": {
+        "trigger": "Same tool called more than 20 times in 60 seconds by the same API key",
+        "action": "Blocked for 60 seconds. Webhook alert sent. Prevents runaway agent loops."
       }
     }
   },

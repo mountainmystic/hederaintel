@@ -9,16 +9,25 @@ be bypassed by a client-side patch, a forked npm package, or prompt injection.
 
 ### Remote Human-in-the-Loop (HITL) Enforcement
 
-All tool calls are proxied through a hardened remote server. The following
-controls are enforced at the API gateway level, not in client code:
+HITL is enforced on **operation type**, not balance thresholds. The rationale
+is that HederaIntel is a read and intelligence platform — the risk surface is
+irreversible on-chain writes and runaway agent loops, not credit size.
 
-| Threshold | Behaviour |
-|---|---|
-| Any tool call | Consent check — `confirm_terms` must have been called for the current terms version |
-| < 500 HBAR value | Auto-approved, executes immediately |
-| 500 – 5,000 HBAR | Executes, owner notified via webhook |
-| > 10,000 HBAR | **Hard blocked** — returns `403 HUMAN_APPROVAL_REQUIRED` with a unique approval URL |
-| Admin operations (`updateAdminKey`, `deleteAccount`, etc.) | **Always hard blocked** regardless of value |
+All controls are enforced server-side and cannot be bypassed by modifying
+the npm package:
+
+| Trigger | Tier | Behaviour |
+|---|---|---|
+| Any tool call | Consent gate | `confirm_terms` required for current terms version |
+| `governance_vote` | Hard stop | Blocked — agent receives approval URL, human must approve before vote is cast |
+| `hcs_write_record` | Notify | Executes immediately, webhook notification sent to operator |
+| Any tool called >20 times in 60s by same key | Loop guard | Blocked — webhook alert sent, agent must wait 60s |
+| All other tools | Auto | Executes immediately, no HITL |
+
+**Why these specific triggers:**
+- `governance_vote` is permanent and irreversible on-chain. A DAO vote cast by a rogue agent cannot be undone.
+- `hcs_write_record` creates an immutable compliance artifact. Operators need visibility into what is being written.
+- Loop detection prevents runaway agents from draining credit or spamming the network.
 
 **An agent cannot circumvent these controls by modifying the npm package.**
 The enforcement logic runs in the private backend, not in the client.
