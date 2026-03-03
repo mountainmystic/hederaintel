@@ -249,6 +249,11 @@ export async function executeContractTool(name, args) {
     const funcName = args.function_name;
     const params = args.function_params || [];
 
+    // Defensively parse return_types and function_params in case they arrive as JSON strings
+    const returnTypes = typeof args.return_types === "string"
+      ? JSON.parse(args.return_types)
+      : (args.return_types || []);
+
     // Build signature: use explicit abi_hint signature if provided (e.g. "balanceOf(address)")
     // Otherwise infer from function name and param types
     let signature;
@@ -288,15 +293,15 @@ export async function executeContractTool(name, args) {
     // Decode the result
     let decoded = null;
     if (callResult?.result && callResult.result !== "0x") {
-      if (args.return_types && args.return_types.length > 0) {
+      if (returnTypes && returnTypes.length > 0) {
         // Precise decode using ethers ABI coder
         try {
           const raw = ethers.utils.defaultAbiCoder.decode(
-            args.return_types,
+            returnTypes,
             callResult.result
           );
           // Convert BigNumbers and format addresses with Hedera IDs
-          const values = args.return_types.map((type, i) => {
+          const values = returnTypes.map((type, i) => {
             const val = raw[i];
             if (ethers.BigNumber.isBigNumber(val)) {
               return { type, value: val.toString() };
@@ -312,7 +317,7 @@ export async function executeContractTool(name, args) {
           decoded = {
             raw_hex: callResult.result,
             decoded_values: values,
-            note: `Decoded using provided return_types: [${args.return_types.join(", ")}]`,
+            note: `Decoded using provided return_types: [${returnTypes.join(", ")}]`,
           };
         } catch (e) {
           // Fall back to heuristic decoder if ethers decode fails
