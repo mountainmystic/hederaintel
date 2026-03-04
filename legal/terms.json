@@ -43,7 +43,7 @@
           { "name": "governance_monitor", "hbar": "0.1000" },
           { "name": "token_monitor",      "hbar": "0.1000" },
           { "name": "identity_resolve",   "hbar": "0.1000" },
-          { "name": "contract_read",      "hbar": "0.1000" },
+          { "name": "contract_read",      "hbar": "0.1000" }
         ]
       },
       "standard": {
