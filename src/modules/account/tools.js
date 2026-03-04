@@ -11,12 +11,12 @@ export const ACCOUNT_TOOL_DEFINITIONS = [
   {
     name: "account_info",
     description:
-      "Get platform wallet address, pricing for all 19 tools in HBAR and USD, and your current balance. " +
+      "Get platform wallet address, pricing for all 20 tools in HBAR and USD, and your current balance. " +
       "FREE to call — no API key required. " +
       "Use this tool first to discover how to fund an account and start using the platform. " +
       "To create an account automatically, simply send HBAR to the platform wallet — " +
       "your Hedera account ID becomes your API key automatically. " +
-      "19 tools across 6 modules.",
+      "20 tools across 6 modules.",
     inputSchema: {
       type: "object",
       properties: {
@@ -81,7 +81,7 @@ async function getAccountInfo(args) {
 
   return {
     service: "HederaIntel — Hedera MCP Platform",
-    description: "24 tools across 8 modules. Pay per call in HBAR. No registration required.",
+    description: "20 tools across 6 modules. Pay per call in HBAR. No registration required.",
 
     hbar_price_usd: hbarPriceUsd ? `$${hbarPriceUsd.toFixed(4)}` : "unavailable",
     hbar_price_source: "SaucerSwap DEX (live, 5-min cache)",

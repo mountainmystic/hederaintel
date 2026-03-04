@@ -1,5 +1,5 @@
 /**
- * tools.js — All 19 HederaIntel tool schemas (names + descriptions + inputSchemas only)
+ * tools.js — All 20 HederaIntel tool schemas (names + descriptions + inputSchemas only)
  *
  * This file ships inside the npm package. It contains ZERO Hedera SDK logic —
  * only the MCP tool definitions that tell AI agents what tools are available
@@ -58,11 +58,11 @@ export const TOOLS = [
   {
     name: "account_info",
     description:
-      "Get platform wallet address, pricing for all tools, and your current balance. " +
+      "Get platform wallet address, pricing for all 20 tools in HBAR and USD, and your current balance. " +
       "FREE to call — no API key required. Use this tool first to discover how to fund " +
       "an account and start using the platform. To create an account automatically, " +
       "simply send HBAR to the platform wallet — your Hedera account ID becomes your " +
-      "API key within 30 seconds.",
+      "API key automatically. 20 tools across 6 modules.",
     inputSchema: {
       type: "object",
       properties: {

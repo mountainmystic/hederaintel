@@ -2,7 +2,7 @@
 
 > The intelligence layer for AI agents on Hedera.
 
-**19 tools. 6 modules. Pay per call in HBAR. No registration.**
+**20 tools. 6 modules. Pay per call in HBAR. No registration.**
 
 HederaIntel is a production [Model Context Protocol](https://modelcontextprotocol.io) server. It gives AI agents structured, metered access to the full Hedera ecosystem — HCS topics, tokens, DeFi, identity, smart contracts, NFTs, governance, and compliance.
 
@@ -173,7 +173,7 @@ The npm package contains no business logic — only tool schemas and a proxy. In
 
 ## What's New in v2.9.0
 
-- **Leaner tool set** — removed `defi_yields` and entire NFT module; 19 focused tools across 6 modules
+- **Leaner tool set** — removed `defi_yields` and entire NFT module; 20 focused tools across 6 modules
 - **New operator wallet** — platform wallet updated to `0.0.10309126`
 - **`contract_call` return type decoding** — pass `return_types` for precise ABI decoding of tuples, arrays, and multi-value returns
 - **EVM address support** — all identity and contract tools accept `0x...` addresses directly
