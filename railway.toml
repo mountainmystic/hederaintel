@@ -4,10 +4,10 @@ builder = "nixpacks"
 [build.nixpacksPlan.phases.setup]
 nixPkgs = ["nodejs_22"]
 
-[deploy]
+[services.hedera-mcp-platform]
 startCommand = "node --experimental-sqlite src/server-entry.js"
 restartPolicyType = "always"
 
-[cron.backup]
-schedule = "0 2 * * *"
-command = "node scripts/backup.mjs"
+[services.backup-cron]
+startCommand = "node scripts/backup.mjs"
+cronSchedule = "0 2 * * *"
