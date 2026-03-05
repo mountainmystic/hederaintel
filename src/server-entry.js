@@ -34,9 +34,8 @@ function readBody(req) {
 function isAdmin(req) {
   const secret = process.env.ADMIN_SECRET;
   if (!secret) return false;
-  const url = new URL(req.url, `http://localhost`);
-  return req.headers["x-admin-secret"] === secret
-    || url.searchParams.get("secret") === secret;
+  // Header-only auth — ?secret= URL param removed (leaks to server logs)
+  return req.headers["x-admin-secret"] === secret;
 }
 
 function json(res, status, data) {
@@ -45,6 +44,25 @@ function json(res, status, data) {
 }
 
 const port = process.env.PORT || 3000;
+const startTime = Date.now();
+
+// ── Rate limiter for free endpoints ──────────────────────────────────────────
+// Simple in-memory store: ip -> { count, windowStart }
+const FREE_RATE_LIMIT = 30;        // max calls per window
+const FREE_RATE_WINDOW_MS = 60_000; // 60 seconds
+const rateLimitStore = new Map();
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const entry = rateLimitStore.get(ip);
+  if (!entry || (now - entry.windowStart) > FREE_RATE_WINDOW_MS) {
+    rateLimitStore.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  entry.count++;
+  if (entry.count > FREE_RATE_LIMIT) return true;
+  return false;
+}
 
 const httpServer = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
@@ -56,6 +74,8 @@ const httpServer = http.createServer(async (req, res) => {
       version: VERSION,
       network: process.env.HEDERA_NETWORK,
       account: process.env.HEDERA_ACCOUNT_ID,
+      watcher_running: !!process.env.HEDERA_ACCOUNT_ID,
+      uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
       modules: ["hcs", "compliance", "governance", "token", "identity", "contract"],
       tools: ALL_TOOLS.map((t) => t.name),
       costs: getCosts(),
@@ -68,6 +88,14 @@ const httpServer = http.createServer(async (req, res) => {
   // Public terms endpoint — agents and browsers can fetch this directly
   if (req.method === "GET" && url.pathname === "/terms") {
     return json(res, 200, TERMS);
+  }
+
+  // Rate limit free MCP onboarding endpoints
+  if (["get_terms", "confirm_terms", "account_info"].some(t => url.pathname.includes(t))) {
+    const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() || req.socket.remoteAddress;
+    if (isRateLimited(ip)) {
+      return json(res, 429, { error: "Rate limit exceeded. Max 30 requests per 60 seconds.", retry_after_seconds: 60 });
+    }
   }
 
   // Serve static files from /public (e.g. /public/terms.json)
@@ -196,12 +224,32 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
+  // SQLite backup endpoint — downloads the raw database file
+  if (req.method === "GET" && url.pathname === "/admin/backup") {
+    if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
+    try {
+      const { readFileSync } = await import("fs");
+      const dbPath = process.env.DB_PATH || "/data/hederaintel.db";
+      const dbFile = readFileSync(dbPath);
+      const filename = `hederaintel-backup-${new Date().toISOString().slice(0,10)}.db`;
+      res.writeHead(200, {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": dbFile.length,
+      });
+      res.end(dbFile);
+    } catch (e) {
+      return json(res, 500, { error: `Backup failed: ${e.message}` });
+    }
+    return;
+  }
+
   return json(res, 404, { error: "Not found", mcp_endpoint: "/mcp" });
 });
 
 function getDashboardHTML() {
   const platformAccount = process.env.HEDERA_ACCOUNT_ID || "";
-  const adminSecret = process.env.ADMIN_SECRET || "";
+  // Note: secret is NOT embedded in HTML — dashboard uses cookie set at login
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -296,10 +344,22 @@ function getDashboardHTML() {
 </div>
 
 <script>
-const SECRET = '${adminSecret}';
+// Secret is read from sessionStorage (set once at login, never in HTML source)
+const SECRET = sessionStorage.getItem('hederaintel_admin_secret') || '';
+
+if (!SECRET) {
+  const input = prompt('Admin secret:');
+  if (input) sessionStorage.setItem('hederaintel_admin_secret', input);
+  location.reload();
+}
 
 async function fetchJSON(path) {
-  const r = await fetch(path + '?secret=' + SECRET);
+  const r = await fetch(path, { headers: { 'x-admin-secret': SECRET } });
+  if (r.status === 401) {
+    sessionStorage.removeItem('hederaintel_admin_secret');
+    alert('Invalid secret. Please refresh and try again.');
+    throw new Error('Unauthorized');
+  }
   if (!r.ok) throw new Error(r.status);
   return r.json();
 }
