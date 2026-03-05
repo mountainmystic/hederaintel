@@ -228,7 +228,6 @@ const httpServer = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/admin/backup") {
     if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
     try {
-      const { readFileSync } = await import("fs");
       const dbPath = process.env.DB_PATH || "/data/hederaintel.db";
       const dbFile = readFileSync(dbPath);
       const filename = `hederaintel-backup-${new Date().toISOString().slice(0,10)}.db`;

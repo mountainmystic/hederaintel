@@ -1,12 +1,11 @@
 // backup.mjs — Nightly SQLite backup to private GitHub repo
-// Reads the DB file directly from the Railway volume — no HTTP call needed.
+// Fetches the live DB via /admin/backup then commits to GitHub.
 import https from "https";
-import { readFileSync } from "fs";
 
 console.log("=== HederaIntel Backup Script Starting ===");
 console.log("Time:", new Date().toISOString());
 
-const REQUIRED = ["GITHUB_BACKUP_TOKEN", "GITHUB_BACKUP_REPO"];
+const REQUIRED = ["ADMIN_SECRET", "GITHUB_BACKUP_TOKEN", "GITHUB_BACKUP_REPO", "RAILWAY_PUBLIC_DOMAIN"];
 for (const key of REQUIRED) {
   console.log(`${key}: ${process.env[key] ? "SET" : "MISSING"}`);
 }
@@ -17,29 +16,60 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
+const ADMIN_SECRET    = process.env.ADMIN_SECRET;
 const GITHUB_TOKEN    = process.env.GITHUB_BACKUP_TOKEN;
 const GITHUB_REPO     = process.env.GITHUB_BACKUP_REPO;
-const DB_PATH         = process.env.DB_PATH || "/data/hederaintel.db";
+const PLATFORM_URL    = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
 const TODAY           = new Date().toISOString().slice(0, 10);
 const BACKUP_FILENAME = `backups/hederaintel-${TODAY}.db`;
 
-console.log("DB path:", DB_PATH);
+console.log("Platform URL:", PLATFORM_URL);
 console.log("GitHub Repo:", GITHUB_REPO);
 console.log("Backup filename:", BACKUP_FILENAME);
 
 // ─────────────────────────────────────────────
-// Step 1 — Read the DB file directly from volume
+// Step 1 — Fetch the live DB from /admin/backup
 // ─────────────────────────────────────────────
 
-console.log("\nStep 1: Reading DB file from volume...");
-let dbBuffer;
-try {
-  dbBuffer = readFileSync(DB_PATH);
-  console.log(`✅ Read ${(dbBuffer.length / 1024).toFixed(1)} KB from ${DB_PATH}`);
-} catch (e) {
-  console.error("❌ Could not read DB file:", e.message);
-  console.error("Hint: Make sure the Railway volume is mounted to this service too");
-  process.exit(1);
+async function fetchBackup() {
+  console.log(`\nStep 1: Fetching backup from ${PLATFORM_URL}/admin/backup ...`);
+  return new Promise((resolve, reject) => {
+    const req = https.request(`${PLATFORM_URL}/admin/backup`, {
+      headers: { "x-admin-secret": ADMIN_SECRET },
+      timeout: 30000,
+    }, (res) => {
+      console.log("Backup endpoint status:", res.statusCode);
+      if (res.statusCode !== 200) {
+        let errData = "";
+        res.on("data", chunk => errData += chunk);
+        res.on("end", () => {
+          console.error("Error response body:", errData);
+          reject(new Error(`Backup endpoint returned ${res.statusCode}`));
+        });
+        return;
+      }
+      const chunks = [];
+      res.on("data", chunk => {
+        chunks.push(chunk);
+        process.stdout.write(".");
+      });
+      res.on("end", () => {
+        console.log("\nDownload complete");
+        resolve(Buffer.concat(chunks));
+      });
+      res.on("error", reject);
+    });
+    req.on("timeout", () => {
+      console.error("❌ Request timed out after 30s — is the platform URL reachable?");
+      req.destroy();
+      reject(new Error("Request timed out"));
+    });
+    req.on("error", (e) => {
+      console.error("❌ Request error:", e.message);
+      reject(e);
+    });
+    req.end();
+  });
 }
 
 // ─────────────────────────────────────────────
@@ -125,6 +155,9 @@ async function commitToGitHub(fileBuffer, existingSha) {
 // ─────────────────────────────────────────────
 
 try {
+  const dbBuffer = await fetchBackup();
+  console.log(`✅ Fetched ${(dbBuffer.length / 1024).toFixed(1)} KB`);
+
   const existingSha = await getExistingSha(BACKUP_FILENAME);
   if (existingSha) console.log("File exists in repo — will update");
   else console.log("New file — will create");
