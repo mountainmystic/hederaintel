@@ -20,8 +20,9 @@ if (missing.length > 0) {
 const ADMIN_SECRET    = process.env.ADMIN_SECRET;
 const GITHUB_TOKEN    = process.env.GITHUB_BACKUP_TOKEN;
 const GITHUB_REPO     = process.env.GITHUB_BACKUP_REPO;
-// Use internal Railway hostname for inter-service calls (public URL is blocked)
-const PLATFORM_URL    = `http://hedera-mcp-platform.railway.internal:8080`;
+// Use Railway private domain for inter-service calls
+// We reference the main service's private domain via a variable we set manually
+const PLATFORM_URL    = `http://${process.env.MAIN_SERVICE_PRIVATE_DOMAIN}`;
 const TODAY           = new Date().toISOString().slice(0, 10);
 const BACKUP_FILENAME = `backups/hederaintel-${TODAY}.db`;
 
