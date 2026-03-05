@@ -1,33 +1,43 @@
 // backup.mjs — Nightly SQLite backup to private GitHub repo
-// Runs as a Railway cron job. Fetches the live DB via /admin/backup,
-// then commits it to the hederaintel-backups GitHub repo.
-
 import https from "https";
 
+console.log("=== HederaIntel Backup Script Starting ===");
+console.log("Time:", new Date().toISOString());
+
+// Log all env vars we care about (keys only, not values)
 const REQUIRED = ["ADMIN_SECRET", "GITHUB_BACKUP_TOKEN", "GITHUB_BACKUP_REPO", "RAILWAY_PUBLIC_DOMAIN"];
+for (const key of REQUIRED) {
+  console.log(`${key}: ${process.env[key] ? "SET" : "MISSING"}`);
+}
+
 const missing = REQUIRED.filter(k => !process.env[k]);
 if (missing.length > 0) {
-  console.error("Missing env vars: " + missing.join(", "));
+  console.error("❌ Missing env vars: " + missing.join(", "));
   process.exit(1);
 }
 
-const ADMIN_SECRET        = process.env.ADMIN_SECRET;
-const GITHUB_TOKEN        = process.env.GITHUB_BACKUP_TOKEN;
-const GITHUB_REPO         = process.env.GITHUB_BACKUP_REPO;       // e.g. mountainmystic/hederaintel-backups
-const PLATFORM_URL        = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
-const TODAY               = new Date().toISOString().slice(0, 10); // e.g. 2026-03-06
-const BACKUP_FILENAME     = `backups/hederaintel-${TODAY}.db`;
+const ADMIN_SECRET    = process.env.ADMIN_SECRET;
+const GITHUB_TOKEN    = process.env.GITHUB_BACKUP_TOKEN;
+const GITHUB_REPO     = process.env.GITHUB_BACKUP_REPO;
+const PLATFORM_URL    = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+const TODAY           = new Date().toISOString().slice(0, 10);
+const BACKUP_FILENAME = `backups/hederaintel-${TODAY}.db`;
+
+console.log("Platform URL:", PLATFORM_URL);
+console.log("GitHub Repo:", GITHUB_REPO);
+console.log("Backup filename:", BACKUP_FILENAME);
 
 // ─────────────────────────────────────────────
 // Step 1 — Fetch the live DB from /admin/backup
 // ─────────────────────────────────────────────
 
 async function fetchBackup() {
-  console.log(`Fetching backup from ${PLATFORM_URL}/admin/backup ...`);
+  console.log(`\nStep 1: Fetching backup from ${PLATFORM_URL}/admin/backup ...`);
   return new Promise((resolve, reject) => {
     const req = https.request(`${PLATFORM_URL}/admin/backup`, {
       headers: { "x-admin-secret": ADMIN_SECRET },
     }, (res) => {
+      console.log("Backup endpoint status:", res.statusCode);
       if (res.statusCode !== 200) {
         reject(new Error(`Backup endpoint returned ${res.statusCode}`));
         return;
@@ -37,16 +47,20 @@ async function fetchBackup() {
       res.on("end", () => resolve(Buffer.concat(chunks)));
       res.on("error", reject);
     });
-    req.on("error", reject);
+    req.on("error", (e) => {
+      console.error("Request error:", e.message);
+      reject(e);
+    });
     req.end();
   });
 }
 
 // ─────────────────────────────────────────────
-// Step 2 — Check if file already exists in GitHub (need SHA to update)
+// Step 2 — Check if file already exists in GitHub
 // ─────────────────────────────────────────────
 
 async function getExistingSha(filename) {
+  console.log(`\nStep 2: Checking if ${filename} exists in GitHub...`);
   return new Promise((resolve) => {
     const options = {
       hostname: "api.github.com",
@@ -58,17 +72,18 @@ async function getExistingSha(filename) {
       },
     };
     const req = https.request(options, (res) => {
+      console.log("GitHub check status:", res.statusCode);
       let data = "";
       res.on("data", chunk => data += chunk);
       res.on("end", () => {
         if (res.statusCode === 200) {
           try { resolve(JSON.parse(data).sha); } catch { resolve(null); }
         } else {
-          resolve(null); // file doesn't exist yet — that's fine
+          resolve(null);
         }
       });
     });
-    req.on("error", () => resolve(null));
+    req.on("error", (e) => { console.error("GitHub check error:", e.message); resolve(null); });
     req.end();
   });
 }
@@ -78,6 +93,7 @@ async function getExistingSha(filename) {
 // ─────────────────────────────────────────────
 
 async function commitToGitHub(fileBuffer, existingSha) {
+  console.log(`\nStep 3: Committing to GitHub (${(fileBuffer.length / 1024).toFixed(1)} KB)...`);
   const body = JSON.stringify({
     message: `chore: nightly backup ${TODAY}`,
     content: fileBuffer.toString("base64"),
@@ -99,17 +115,19 @@ async function commitToGitHub(fileBuffer, existingSha) {
     };
 
     const req = https.request(options, (res) => {
+      console.log("GitHub commit status:", res.statusCode);
       let data = "";
       res.on("data", chunk => data += chunk);
       res.on("end", () => {
         if (res.statusCode === 200 || res.statusCode === 201) {
           resolve(JSON.parse(data));
         } else {
-          reject(new Error(`GitHub API returned ${res.statusCode}: ${data}`));
+          console.error("GitHub response:", data);
+          reject(new Error(`GitHub API returned ${res.statusCode}`));
         }
       });
     });
-    req.on("error", reject);
+    req.on("error", (e) => { console.error("GitHub commit error:", e.message); reject(e); });
     req.write(body);
     req.end();
   });
@@ -121,10 +139,11 @@ async function commitToGitHub(fileBuffer, existingSha) {
 
 try {
   const dbBuffer = await fetchBackup();
-  console.log(`Fetched ${(dbBuffer.length / 1024).toFixed(1)} KB`);
+  console.log(`✅ Fetched ${(dbBuffer.length / 1024).toFixed(1)} KB`);
 
   const existingSha = await getExistingSha(BACKUP_FILENAME);
   if (existingSha) console.log("File exists in repo — will update");
+  else console.log("New file — will create");
 
   await commitToGitHub(dbBuffer, existingSha);
   console.log(`✅ Backup committed to ${GITHUB_REPO}/${BACKUP_FILENAME}`);
