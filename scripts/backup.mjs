@@ -1,6 +1,7 @@
 // backup.mjs — Nightly SQLite backup to private GitHub repo
 // Fetches the live DB via /admin/backup then commits to GitHub.
 import https from "https";
+import http from "http";
 
 console.log("=== HederaIntel Backup Script Starting ===");
 console.log("Time:", new Date().toISOString());
@@ -19,7 +20,8 @@ if (missing.length > 0) {
 const ADMIN_SECRET    = process.env.ADMIN_SECRET;
 const GITHUB_TOKEN    = process.env.GITHUB_BACKUP_TOKEN;
 const GITHUB_REPO     = process.env.GITHUB_BACKUP_REPO;
-const PLATFORM_URL    = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+// Use internal Railway hostname for inter-service calls (public URL is blocked)
+const PLATFORM_URL    = `http://hedera-mcp-platform.railway.internal:3000`;
 const TODAY           = new Date().toISOString().slice(0, 10);
 const BACKUP_FILENAME = `backups/hederaintel-${TODAY}.db`;
 
@@ -34,7 +36,7 @@ console.log("Backup filename:", BACKUP_FILENAME);
 async function fetchBackup() {
   console.log(`\nStep 1: Fetching backup from ${PLATFORM_URL}/admin/backup ...`);
   return new Promise((resolve, reject) => {
-    const req = https.request(`${PLATFORM_URL}/admin/backup`, {
+    const req = http.request(`${PLATFORM_URL}/admin/backup`, {
       headers: { "x-admin-secret": ADMIN_SECRET },
       timeout: 30000,
     }, (res) => {
