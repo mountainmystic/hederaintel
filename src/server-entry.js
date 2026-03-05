@@ -447,3 +447,97 @@ httpServer.listen(port, () => {
 startWatcher();
 console.error("Hedera network: " + process.env.HEDERA_NETWORK);
 console.error("Tools: " + ALL_TOOLS.map((t) => t.name).join(", "));
+
+// ── Nightly backup to GitHub ──────────────────────────────────────────────────
+// Runs inside the main process — direct access to the DB file, no HTTP needed.
+if (process.env.GITHUB_BACKUP_TOKEN && process.env.GITHUB_BACKUP_REPO) {
+  import("https").then(({ default: https }) => {
+    async function runBackup() {
+      const dbPath = process.env.DB_PATH || "/data/hederaintel.db";
+      const today = new Date().toISOString().slice(0, 10);
+      const filename = `backups/hederaintel-${today}.db`;
+      const repo = process.env.GITHUB_BACKUP_REPO;
+      const token = process.env.GITHUB_BACKUP_TOKEN;
+
+      console.error(`[Backup] Starting nightly backup to ${repo}/${filename}`);
+
+      try {
+        // Read DB file
+        const dbFile = readFileSync(dbPath);
+        console.error(`[Backup] Read ${(dbFile.length / 1024).toFixed(1)} KB`);
+
+        // Check for existing SHA
+        const sha = await new Promise(resolve => {
+          const req = https.request({
+            hostname: "api.github.com",
+            path: `/repos/${repo}/contents/${filename}`,
+            headers: { "Authorization": `Bearer ${token}`, "User-Agent": "hederaintel-backup", "Accept": "application/vnd.github+json" },
+          }, res => {
+            let data = "";
+            res.on("data", c => data += c);
+            res.on("end", () => res.statusCode === 200 ? resolve(JSON.parse(data).sha) : resolve(null));
+          });
+          req.on("error", () => resolve(null));
+          req.end();
+        });
+
+        // Commit to GitHub
+        const body = JSON.stringify({
+          message: `chore: nightly backup ${today}`,
+          content: dbFile.toString("base64"),
+          ...(sha ? { sha } : {}),
+        });
+
+        await new Promise((resolve, reject) => {
+          const req = https.request({
+            hostname: "api.github.com",
+            path: `/repos/${repo}/contents/${filename}`,
+            method: "PUT",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "User-Agent": "hederaintel-backup",
+              "Accept": "application/vnd.github+json",
+              "Content-Type": "application/json",
+              "Content-Length": Buffer.byteLength(body),
+            },
+          }, res => {
+            let data = "";
+            res.on("data", c => data += c);
+            res.on("end", () => {
+              if (res.statusCode === 200 || res.statusCode === 201) {
+                console.error(`[Backup] ✅ Committed to GitHub`);
+                resolve();
+              } else {
+                console.error(`[Backup] ❌ GitHub returned ${res.statusCode}: ${data}`);
+                reject(new Error(`GitHub ${res.statusCode}`));
+              }
+            });
+          });
+          req.on("error", reject);
+          req.write(body);
+          req.end();
+        });
+      } catch (e) {
+        console.error(`[Backup] ❌ Failed: ${e.message}`);
+      }
+    }
+
+    // Schedule: run once at startup if past 2am, then every 24h
+    function scheduleBackup() {
+      const now = new Date();
+      const next2am = new Date();
+      next2am.setUTCHours(2, 0, 0, 0);
+      if (next2am <= now) next2am.setUTCDate(next2am.getUTCDate() + 1);
+      const msUntil2am = next2am - now;
+      console.error(`[Backup] Next backup scheduled in ${Math.round(msUntil2am / 3600000)}h`);
+      setTimeout(() => {
+        runBackup();
+        setInterval(runBackup, 24 * 60 * 60 * 1000);
+      }, msUntil2am);
+    }
+
+    scheduleBackup();
+  });
+} else {
+  console.error("[Backup] GITHUB_BACKUP_TOKEN or GITHUB_BACKUP_REPO not set — nightly backup disabled");
+}
