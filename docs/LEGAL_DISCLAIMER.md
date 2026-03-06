@@ -1,4 +1,4 @@
-# Legal Disclaimer — HederaIntel MCP Platform
+# Legal Disclaimer — HederaToolbox MCP Platform
 
 **Plain-English Version** | Last updated: March 2026
 
@@ -93,7 +93,7 @@ That's it. No consequential, incidental, or punitive damages.
 ## Questions
 
 File an issue at:
-https://github.com/mountainmystic/hedera-mcp-platform/issues
+https://github.com/mountainmystic/hederatoolbox/issues
 
 For commercial licensing or enterprise SLAs, mention "Enterprise" in the
 issue title and we'll respond within 2 business days.

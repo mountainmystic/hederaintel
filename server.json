@@ -1,12 +1,12 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
-  "name": "io.github.mountainmystic/hedera-mcp-platform",
+  "name": "io.github.mountainmystic/hederatoolbox",
   "version": "2.2.1",
   "description": "Hedera ecosystem intelligence for AI agents. 29 tools, pay per call in HBAR. HITL enforced.",
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "hedera-mcp-platform",
+      "identifier": "hederatoolbox",
       "version": "2.2.1",
       "transport": {
         "type": "streamable-http",

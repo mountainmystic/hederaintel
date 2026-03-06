@@ -1,4 +1,4 @@
-# HederaIntel MCP Platform — Proprietary License
+# HederaToolbox MCP Platform — Proprietary License
 
 Copyright (c) 2026 mountainmystic. All Rights Reserved.
 
@@ -15,8 +15,8 @@ Subject to payment of applicable fees and acceptance of the Terms of Service
 (see `legal/terms.json`), you are granted a limited, non-exclusive,
 non-transferable, revocable license to:
 
-1. Install and use the published npm package (`hedera-mcp-platform`) solely
-   to connect your AI agents or applications to the HederaIntel API.
+1. Install and use the published npm package (`@hederatoolbox/platform`) solely
+   to connect your AI agents or applications to the HederaToolbox API.
 2. Use the results returned by the API in your own products and services.
 
 ## RESTRICTIONS
@@ -57,4 +57,4 @@ resolved in the courts of British Columbia, Canada.
 ## CONTACT
 
 For commercial licensing inquiries, partnership agreements, or to report
-violations: https://github.com/mountainmystic/hedera-mcp-platform/issues
+violations: https://github.com/mountainmystic/hederatoolbox/issues

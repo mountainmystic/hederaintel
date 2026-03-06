@@ -70,7 +70,7 @@ const httpServer = http.createServer(async (req, res) => {
   if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
     return json(res, 200, {
       status: "ok",
-      service: "HederaIntel — Hedera MCP Platform",
+      service: "HederaToolbox — Hedera MCP Platform",
       version: VERSION,
       network: process.env.HEDERA_NETWORK,
       account: process.env.HEDERA_ACCOUNT_ID,
@@ -228,9 +228,9 @@ const httpServer = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/admin/backup") {
     if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
     try {
-      const dbPath = process.env.DB_PATH || "/data/hederaintel.db";
+      const dbPath = process.env.DB_PATH || "/data/hederatoolbox.db";
       const dbFile = readFileSync(dbPath);
-      const filename = `hederaintel-backup-${new Date().toISOString().slice(0,10)}.db`;
+      const filename = `hederatoolbox-backup-${new Date().toISOString().slice(0,10)}.db`;
       res.writeHead(200, {
         "Content-Type": "application/octet-stream",
         "Content-Disposition": `attachment; filename="${filename}"`,
@@ -254,7 +254,7 @@ function getDashboardHTML() {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HederaIntel Admin</title>
+<title>HederaToolbox Admin</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; min-height: 100vh; }
@@ -289,7 +289,7 @@ function getDashboardHTML() {
 </head>
 <body>
 <header>
-  <h1>HederaIntel</h1>
+  <h1>HederaToolbox</h1>
   <span class="badge" id="network-badge">mainnet</span>
   <span id="last-updated"></span>
   <button class="refresh" onclick="load()">Refresh</button>
@@ -344,18 +344,18 @@ function getDashboardHTML() {
 
 <script>
 // Secret is read from sessionStorage (set once at login, never in HTML source)
-const SECRET = sessionStorage.getItem('hederaintel_admin_secret') || '';
+const SECRET = sessionStorage.getItem('hederatoolbox_admin_secret') || '';
 
 if (!SECRET) {
   const input = prompt('Admin secret:');
-  if (input) sessionStorage.setItem('hederaintel_admin_secret', input);
+  if (input) sessionStorage.setItem('hederatoolbox_admin_secret', input);
   location.reload();
 }
 
 async function fetchJSON(path) {
   const r = await fetch(path, { headers: { 'x-admin-secret': SECRET } });
   if (r.status === 401) {
-    sessionStorage.removeItem('hederaintel_admin_secret');
+    sessionStorage.removeItem('hederatoolbox_admin_secret');
     alert('Invalid secret. Please refresh and try again.');
     throw new Error('Unauthorized');
   }
@@ -436,7 +436,7 @@ setInterval(load, 30000);
 }
 
 httpServer.listen(port, () => {
-  console.error("HederaIntel remote brain running on port " + port);
+  console.error("HederaToolbox remote brain running on port " + port);
   console.error("Health: http://localhost:" + port + "/");
   console.error("MCP:    http://localhost:" + port + "/mcp");
   if (process.env.ADMIN_SECRET) {
@@ -453,9 +453,9 @@ console.error("Tools: " + ALL_TOOLS.map((t) => t.name).join(", "));
 if (process.env.GITHUB_BACKUP_TOKEN && process.env.GITHUB_BACKUP_REPO) {
   import("https").then(({ default: https }) => {
     async function runBackup() {
-      const dbPath = process.env.DB_PATH || "/data/hederaintel.db";
+      const dbPath = process.env.DB_PATH || "/data/hederatoolbox.db";
       const today = new Date().toISOString().slice(0, 10);
-      const filename = `backups/hederaintel-${today}.db`;
+      const filename = `backups/hederatoolbox-${today}.db`;
       const repo = process.env.GITHUB_BACKUP_REPO;
       const token = process.env.GITHUB_BACKUP_TOKEN;
 

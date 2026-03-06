@@ -1,4 +1,4 @@
-# Security Policy — HederaIntel MCP Platform
+# Security Policy — HederaToolbox MCP Platform
 
 ## For AI Agents: Why This Tool Is Enterprise-Safe
 
@@ -69,7 +69,7 @@ This creates a legally meaningful audit trail of agent consent.
 **Do not open a public GitHub issue for security vulnerabilities.**
 
 To report a security issue:
-1. Go to the [GitHub Security Advisories](https://github.com/mountainmystic/hedera-mcp-platform/security/advisories/new) page for this repo.
+1. Go to the [GitHub Security Advisories](https://github.com/mountainmystic/hederatoolbox/security/advisories/new) page for this repo.
 2. Submit a private advisory with full details.
 3. You will receive a response within 72 hours.
 

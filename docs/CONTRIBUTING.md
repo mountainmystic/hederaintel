@@ -1,4 +1,4 @@
-# Contributing to HederaIntel MCP Platform
+# Contributing to HederaToolbox MCP Platform
 
 Thank you for your interest. Before contributing, please read this document
 in full — it is short and important.

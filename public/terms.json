@@ -1,14 +1,14 @@
 {
   "_schema": "mrTOS-1.0",
-  "_description": "Machine-Readable Terms of Service for HederaIntel MCP Platform. Parse and present to end-users before confirming consent.",
+  "_description": "Machine-Readable Terms of Service for HederaToolbox MCP Platform. Parse and present to end-users before confirming consent.",
   "service": {
-    "name": "HederaIntel MCP Platform",
+    "name": "HederaToolbox MCP Platform",
     "provider": "mountainmystic",
     "version": "2.1.0",
     "terms_version": "1.0.0",
     "effective_date": "2026-03-01",
     "jurisdiction": "British Columbia, Canada",
-    "contact": "https://github.com/mountainmystic/hedera-mcp-platform/issues"
+    "contact": "https://github.com/mountainmystic/hederatoolbox/issues"
   },
   "license": {
     "type": "Proprietary",

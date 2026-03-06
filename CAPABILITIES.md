@@ -1,12 +1,12 @@
-# HederaIntel — Capabilities Manifest
+# HederaToolbox — Capabilities Manifest
 
-> This document is the authoritative, versioned record of what HederaIntel can and cannot do.
+> This document is the authoritative, versioned record of what HederaToolbox can and cannot do.
 > It is written for AI agents, developers, and enterprise evaluators.
 > Version: 2.8.1 | Updated: 2026-03-03
 
 ---
 
-## What HederaIntel Is
+## What HederaToolbox Is
 
 A **read and intelligence platform** for the Hedera network, delivered as an MCP server.
 
@@ -105,7 +105,7 @@ The following features have been described by AI systems evaluating this repo. T
 
 - Demo agent script showing end-to-end agent workflow
 - Developer portal / admin dashboard *(shipped in v2.8.0)*
-- hederaintel.com domain configuration
+- hederatoolbox.com domain configuration
 
 ---
 
@@ -122,7 +122,7 @@ The following features have been described by AI systems evaluating this repo. T
 | 2.3.0 | EVM address support in all three identity tools |
 | 2.3.1 | Live HBAR/USD pricing in account_info via SaucerSwap (5-min cache) |
 | 2.4.0 | contract_call arbitrary ABI encoding — any function, any params, dynamic selector |
-| 2.5.0 | npm namespace migration to @hederaintel/platform |
+| 2.5.0 | npm namespace migration to @hederatoolbox/platform |
 | 2.6.0 | contract_call return_types param, ethers ABI decode for tuples and arrays |
 | 2.7.0 | HITL enforcement implemented: governance_vote hard stop, hcs_write_record notify, loop guard |
 | 2.8.0 | Removed governance_vote and bridge module (bridge_status, bridge_transfers, bridge_analyze) — 24 tools, 8 modules |

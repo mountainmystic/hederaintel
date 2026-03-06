@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// index.js — HederaIntel thin client MCP server (npm entry point)
+// index.js — HederaToolbox thin client MCP server (npm entry point)
 // Registers all 27 tool schemas and proxies every call to the remote brain.
 // No @hashgraph/sdk. No private keys. No business logic.
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -9,7 +9,7 @@ import { TOOLS } from "./tools.js";
 import { forwardToRemote } from "./proxy.js";
 
 const server = new Server(
-  { name: "hedera-mcp-platform", version: "2.0.1" },
+  { name: "hederatoolbox", version: "2.0.1" },
   { capabilities: { tools: {} } }
 );
 
@@ -47,5 +47,5 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 const transport = new StdioServerTransport();
 await server.connect(transport);
 
-const remote = process.env.HEDERAINTEL_ENDPOINT || "https://hedera-mcp-platform-production.up.railway.app";
-console.error("[hedera-mcp-platform] connected | remote: " + remote + " | tools: " + TOOLS.length);
+const remote = process.env.HEDERATOOLBOX_ENDPOINT || "https://hedera-mcp-platform-production.up.railway.app";
+console.error("[hederatoolbox] connected | remote: " + remote + " | tools: " + TOOLS.length);

@@ -1,14 +1,14 @@
-# HederaIntel
+# HederaToolbox
 
 > The intelligence layer for AI agents on Hedera.
 
 **20 tools. 6 modules. Pay per call in HBAR. No registration.**
 
-HederaIntel is a production [Model Context Protocol](https://modelcontextprotocol.io) server. It gives AI agents structured, metered access to the full Hedera ecosystem — HCS topics, tokens, DeFi, identity, smart contracts, NFTs, governance, and compliance.
+HederaToolbox is a production [Model Context Protocol](https://modelcontextprotocol.io) server. It gives AI agents structured, metered access to the full Hedera ecosystem — HCS topics, tokens, DeFi, identity, smart contracts, NFTs, governance, and compliance.
 
 Built for agents that need to *reason* about Hedera, not just interact with it.
 
-[![npm](https://img.shields.io/npm/v/@hederaintel/platform)](https://www.npmjs.com/package/@hederaintel/platform)
+[![npm](https://img.shields.io/npm/v/@hederatoolbox/platform)](https://www.npmjs.com/package/@hederatoolbox/platform)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-listed-blue)](https://registry.modelcontextprotocol.io)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE.md)
 [![HITL](https://img.shields.io/badge/Safety-HITL%20Enforced-green.svg)](SECURITY.md)
@@ -24,7 +24,7 @@ https://hedera-mcp-platform-production.up.railway.app/mcp
 ```json
 {
   "mcpServers": {
-    "hederaintel": {
+    "hederatoolbox": {
       "url": "https://hedera-mcp-platform-production.up.railway.app/mcp"
     }
   }
@@ -161,8 +161,8 @@ Accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`).
 
 | | |
 |---|---|
-| npm | https://www.npmjs.com/package/@hederaintel/platform |
-| MCP Registry | https://registry.modelcontextprotocol.io — search `hederaintel` |
+| npm | https://www.npmjs.com/package/@hederatoolbox/platform |
+| MCP Registry | https://registry.modelcontextprotocol.io — search `hederatoolbox` |
 | Live endpoint | https://hedera-mcp-platform-production.up.railway.app/mcp |
 | Terms | https://hedera-mcp-platform-production.up.railway.app/terms |
 

@@ -4,7 +4,7 @@ import https from "https";
 import http from "http";
 import { lookup } from "dns";
 
-console.log("=== HederaIntel Backup Script Starting ===");
+console.log("=== HederaToolbox Backup Script Starting ===");
 console.log("Time:", new Date().toISOString());
 
 const REQUIRED = ["ADMIN_SECRET", "GITHUB_BACKUP_TOKEN", "GITHUB_BACKUP_REPO", "RAILWAY_PUBLIC_DOMAIN"];
@@ -26,7 +26,7 @@ const GITHUB_REPO     = process.env.GITHUB_BACKUP_REPO;
 // URL built after DNS resolution below
 let PLATFORM_URL = `http://${process.env.MAIN_SERVICE_PRIVATE_DOMAIN}`;
 const TODAY           = new Date().toISOString().slice(0, 10);
-const BACKUP_FILENAME = `backups/hederaintel-${TODAY}.db`;
+const BACKUP_FILENAME = `backups/hederatoolbox-${TODAY}.db`;
 
 console.log("Platform URL:", PLATFORM_URL);
 
