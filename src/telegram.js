@@ -105,6 +105,9 @@ https://hedera-mcp-platform-production.up.railway.app/mcp
 npm PACKAGE
 @hederatoolbox/platform (npx -y @hederatoolbox/platform)
 
+WEBSITE
+https://hederatoolbox.com
+
 BEHAVIOUR RULES
 - Answer concisely. This is Telegram — short responses work better than long ones.
 - Be factual about pricing and authentication. Do not guess.

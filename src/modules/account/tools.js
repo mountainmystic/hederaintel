@@ -80,7 +80,7 @@ async function getAccountInfo(args) {
   }
 
   return {
-    service: "HederaIntel — Hedera MCP Platform",
+    service: "HederaToolbox — Hedera MCP Platform",
     description: "20 tools across 6 modules. Pay per call in HBAR. No registration required.",
 
     hbar_price_usd: hbarPriceUsd ? `$${hbarPriceUsd.toFixed(4)}` : "unavailable",
@@ -98,7 +98,7 @@ async function getAccountInfo(args) {
     platform_wallet: {
       account_id: process.env.HEDERA_ACCOUNT_ID,
       network: process.env.HEDERA_NETWORK || "mainnet",
-      memo: "HederaIntel deposit — your sending account ID becomes your API key",
+      memo: "HederaToolbox deposit — your sending account ID becomes your API key",
     },
 
     pricing,
@@ -106,8 +106,10 @@ async function getAccountInfo(args) {
     ...(balanceInfo && { your_account: balanceInfo }),
 
     links: {
+      website: "https://hederatoolbox.com",
       mcp_endpoint: "https://hedera-mcp-platform-production.up.railway.app/mcp",
-      npm: "https://www.npmjs.com/package/@hederaintel/platform",
+      npm: "https://www.npmjs.com/package/@hederatoolbox/platform",
+      llms_txt: "https://hederatoolbox.com/llms.txt",
     },
   };
 }
