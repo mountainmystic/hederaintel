@@ -7,9 +7,12 @@ import https from "https";
 
 const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN;
 const OWNER_ID   = process.env.TELEGRAM_OWNER_ID;   // your personal Telegram user ID
-const RAILWAY_URL = process.env.RAILWAY_PUBLIC_DOMAIN
-  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-  : process.env.PUBLIC_URL;                          // fallback env var
+// Railway exposes the public URL in different vars depending on version
+const RAILWAY_URL = 
+  (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
+  (process.env.RAILWAY_STATIC_URL) ||
+  (process.env.PUBLIC_URL) ||
+  "https://hedera-mcp-platform-production.up.railway.app"; // hardcoded fallback
 
 // ─── Telegram API helper ────────────────────────────────────────────────────
 
@@ -252,21 +255,25 @@ export async function registerWebhook() {
     console.error("[Telegram] TELEGRAM_BOT_TOKEN not set — bot disabled");
     return;
   }
-  if (!RAILWAY_URL) {
-    console.error("[Telegram] No public URL found (RAILWAY_PUBLIC_DOMAIN or PUBLIC_URL) — webhook not registered");
-    return;
-  }
 
   const webhookUrl = `${RAILWAY_URL}/telegram/webhook`;
-  const result = await telegramRequest("setWebhook", { url: webhookUrl });
+  console.error(`[Telegram] Registering webhook at: ${webhookUrl}`);
+  console.error(`[Telegram] OWNER_ID set: ${!!OWNER_ID} (${OWNER_ID})`);
 
-  if (result?.ok) {
-    console.error(`[Telegram] Webhook registered: ${webhookUrl}`);
-    // Send owner a startup notification
-    if (OWNER_ID) {
-      await notifyOwner(`✅ <b>HederaToolbox bot started</b>\nWebhook: ${webhookUrl}`);
+  try {
+    const result = await telegramRequest("setWebhook", { url: webhookUrl });
+    console.error(`[Telegram] setWebhook response:`, JSON.stringify(result));
+
+    if (result?.ok) {
+      console.error(`[Telegram] ✅ Webhook registered successfully`);
+      if (OWNER_ID) {
+        const notifyResult = await notifyOwner(`✅ <b>HederaToolbox bot started</b>\nWebhook: ${webhookUrl}`);
+        console.error(`[Telegram] Startup notification sent:`, JSON.stringify(notifyResult));
+      }
+    } else {
+      console.error(`[Telegram] ❌ Webhook registration failed:`, JSON.stringify(result));
     }
-  } else {
-    console.error(`[Telegram] Webhook registration failed:`, JSON.stringify(result));
+  } catch (err) {
+    console.error(`[Telegram] ❌ Webhook registration error:`, err.message);
   }
 }
