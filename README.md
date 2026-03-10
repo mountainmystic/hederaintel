@@ -174,7 +174,6 @@ Accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`).
 - **Atomic balance deduction** — balance check and deduct now a single SQL operation, safe under any concurrency
 - **HCS message sanitisation** — control characters and malformed content stripped before AI analysis
 - **Robust JSON parsing** — AI responses now use a fallback parser; one bad HCS message can no longer crash the analysis tools
-- **Telegram operator bot** — `/status`, `/accounts`, `/balance`, `/digest` commands, daily digest at 08:00 UTC, watcher error alerts
 - **Ghost deposit fix** — zero-value staking redistribution entries no longer trigger false deposit notifications
 
 ---
