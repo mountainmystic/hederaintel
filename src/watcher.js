@@ -73,16 +73,27 @@ async function pollDeposits() {
 
       if (incomingTransfers.length === 0) continue;
 
-      // Find who sent it — the account with a negative transfer in this tx
-      // that is NOT our platform account and NOT a fee collector (0.0.98 etc.)
-      const sender = (tx.transfers || []).find(
+      // Calculate how much HBAR actually arrived at the platform account
+      const depositTinybars = incomingTransfers.reduce((sum, t) => sum + t.amount, 0);
+
+      // Skip zero-value or dust transfers (e.g. staking reward redistribution entries)
+      if (depositTinybars <= 0) continue;
+
+      // Find the real sender — the non-system account with the largest outgoing amount.
+      // Using reduce (not find) ensures we pick the primary payer even when multiple
+      // non-system accounts appear in the transfer list (e.g. node reward accounts).
+      const senderTransfers = (tx.transfers || []).filter(
         (t) => t.amount < 0 && t.account !== PLATFORM_ACCOUNT && !isSystemAccount(t.account)
       );
 
-      if (!sender) continue;
+      if (senderTransfers.length === 0) continue;
 
-      const senderAccountId  = sender.account;
-      const depositTinybars  = incomingTransfers.reduce((sum, t) => sum + t.amount, 0);
+      // Pick the account that sent the most (most negative amount = biggest sender)
+      const sender = senderTransfers.reduce(
+        (best, t) => (t.amount < best.amount ? t : best)
+      );
+
+      const senderAccountId = sender.account;
 
       // Credit the sender's account and record the deposit
       const newBalance = creditAccount(senderAccountId, depositTinybars);
