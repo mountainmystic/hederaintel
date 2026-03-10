@@ -114,10 +114,22 @@ export function createAccount(apiKey, hederaAccountId = null, startingBalanceTin
   return getAccount(apiKey);
 }
 
+// Atomic deduct statement — check and deduct in a single SQL operation.
+// If balance is insufficient, 0 rows are changed and we never touch the ledger.
+const stmtAtomicDeduct = db.prepare(`
+  UPDATE accounts
+  SET    balance_tinybars = balance_tinybars - ?,
+         last_used        = datetime('now')
+  WHERE  api_key          = ?
+  AND    balance_tinybars >= ?
+`);
+
 // Deduct from balance atomically. Throws a clear agent-readable error if
 // the key is unknown or balance is too low. Returns new balance in tinybars.
+// The UPDATE + changes() pattern is a single atomic operation — safe under
+// any concurrency level and future horizontal scaling.
 export function deductBalance(apiKey, amountTinybars, toolName) {
-  // Check account exists and has enough balance before touching anything
+  // First check the account exists so we can give a clear error message
   const account = stmts.getBalance.get(apiKey);
 
   if (!account) {
@@ -128,8 +140,13 @@ export function deductBalance(apiKey, amountTinybars, toolName) {
     );
   }
 
-  if (account.balance_tinybars < amountTinybars) {
-    const required = (amountTinybars / 100_000_000).toFixed(4);
+  // Atomic check-and-deduct: only succeeds if balance >= amount at the moment
+  // of the write. No separate read-then-write window for a race condition.
+  const result = stmtAtomicDeduct.run(amountTinybars, apiKey, amountTinybars);
+
+  if (result.changes === 0) {
+    // Row existed but balance was too low (the only reason changes === 0 here)
+    const required  = (amountTinybars          / 100_000_000).toFixed(4);
     const available = (account.balance_tinybars / 100_000_000).toFixed(4);
     throw new Error(
       `Insufficient balance. Required: ${required} HBAR, Available: ${available} HBAR. ` +
@@ -138,10 +155,8 @@ export function deductBalance(apiKey, amountTinybars, toolName) {
     );
   }
 
-  // Deduct and log in sequence (node:sqlite is synchronous so this is safe)
-  stmts.deduct.run(amountTinybars, apiKey);
+  // Log the transaction and return the new balance
   stmts.logTx.run(apiKey, toolName, amountTinybars);
-
   return stmts.getBalance.get(apiKey).balance_tinybars;
 }
 
