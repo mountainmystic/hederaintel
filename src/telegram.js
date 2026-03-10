@@ -12,7 +12,7 @@ const RAILWAY_URL =
   (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
   (process.env.RAILWAY_STATIC_URL) ||
   (process.env.PUBLIC_URL) ||
-  "https://hedera-mcp-platform-production.up.railway.app"; // hardcoded fallback
+  "https://api.hederatoolbox.com"; // hardcoded fallback
 
 // ─── Telegram API helper ────────────────────────────────────────────────────
 
@@ -106,7 +106,7 @@ Governance: governance_monitor (0.10 ℏ), governance_analyze (0.50 ℏ)
 Contract: contract_read (0.10 ℏ), contract_call (0.50 ℏ), contract_analyze (1.00 ℏ)
 
 MCP ENDPOINT
-https://hedera-mcp-platform-production.up.railway.app/mcp
+https://api.hederatoolbox.com/mcp
 
 npm PACKAGE
 @hederatoolbox/platform (npx -y @hederatoolbox/platform)

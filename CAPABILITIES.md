@@ -2,7 +2,7 @@
 
 > This document is the authoritative, versioned record of what HederaToolbox can and cannot do.
 > It is written for AI agents, developers, and enterprise evaluators.
-> Version: 2.8.1 | Updated: 2026-03-03
+> Version: 3.1.0 | Updated: 2026-03-10
 
 ---
 
@@ -14,7 +14,7 @@ It allows AI agents to query, analyze, and write compliance records to Hedera. I
 
 ---
 
-## Confirmed Capabilities (v2.8.1)
+## Confirmed Capabilities (v3.1.0)
 
 ### Payments and Onboarding
 - Accept HBAR deposits to a platform wallet and auto-provision API keys
@@ -55,15 +55,9 @@ It allows AI agents to query, analyze, and write compliance records to Hedera. I
 - Perform deep contract analysis: activity patterns, caller distribution, risk classification
 - Input accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`)
 
-### NFT and Holder Intelligence
-- Return NFT collection metadata: supply, royalties, treasury, token type
-- Return serial-level NFT data: on-chain metadata, IPFS URI, current owner
-- Return top token holders with concentration metrics and whale detection
-- Analyze collection-level holder distribution, transfer velocity, and rarity signals
-
 ---
 
-## Confirmed Limitations (v2.8.1)
+## Confirmed Limitations (v3.1.0)
 
 | Area | Limitation |
 |---|---|
@@ -78,7 +72,7 @@ It allows AI agents to query, analyze, and write compliance records to Hedera. I
 
 ## Features That Do Not Exist
 
-The following features have been described by AI systems evaluating this repo. They are **not implemented** and do not exist in any version of HederaIntel:
+The following features have been described by AI systems evaluating this repo. They are **not implemented** and do not exist in any version of HederaToolbox:
 
 | Claimed Feature | Reality |
 |---|---|
@@ -87,8 +81,9 @@ The following features have been described by AI systems evaluating this repo. T
 | Supply chain workflow validation | Not implemented. |
 | `hederaintel_*` tool prefixes | All tools are unprefixed (e.g. `contract_read`, `hcs_monitor`). |
 | `mcpConfig.json` | This file does not exist in the repo. |
-| Wallet tool functionality | HederaIntel has never had transfer or wallet capabilities. |
-| EVM alias mapping (bidirectional) | Partially supported in `contract_read` input. Full `identity_resolve` support is on the roadmap. |
+| Wallet tool functionality | HederaToolbox has never had transfer or wallet capabilities. |
+| NFT serial-level tools | NFT module was removed. Token tools cover HTS fungible tokens only. |
+| EVM alias mapping (bidirectional) | Partially supported in `contract_read` input only. |
 
 ---
 
@@ -101,28 +96,20 @@ The following features have been described by AI systems evaluating this repo. T
 
 ---
 
-## Roadmap
-
-- Demo agent script showing end-to-end agent workflow
-- Developer portal / admin dashboard *(shipped in v2.8.0)*
-- hederatoolbox.com domain configuration
-
----
-
 ## Version History
 
 | Version | Key Changes |
 |---|---|
 | 1.0.0 | Initial release — core HCS, token, governance tools |
 | 2.0.0 | Thin client proxy architecture — npm package separated from Railway backend |
-| 2.0.1 | Railway deployment fixes, dual entry point split |
 | 2.1.0 | Legal layer — `get_terms`, `confirm_terms`, HITL enforcement, proprietary license |
-| 2.2.0 | SaucerSwap API key auth, live token prices, 1h/24h/7d change, GitHub IP protection |
-| 2.2.2 | SQLite Railway volume persistence, dynamic version from package.json |
-| 2.3.0 | EVM address support in all three identity tools |
-| 2.3.1 | Live HBAR/USD pricing in account_info via SaucerSwap (5-min cache) |
-| 2.4.0 | contract_call arbitrary ABI encoding — any function, any params, dynamic selector |
-| 2.5.0 | npm namespace migration to @hederatoolbox/platform |
-| 2.6.0 | contract_call return_types param, ethers ABI decode for tuples and arrays |
-| 2.7.0 | HITL enforcement implemented: governance_vote hard stop, hcs_write_record notify, loop guard |
-| 2.8.0 | Removed governance_vote and bridge module (bridge_status, bridge_transfers, bridge_analyze) — 24 tools, 8 modules |
+| 2.2.0 | SaucerSwap API key auth, live token prices, 1h/24h/7d change |
+| 2.3.0 | EVM address support in identity and contract tools |
+| 2.4.0 | `contract_call` arbitrary ABI encoding |
+| 2.5.0 | npm namespace migration to `@hederatoolbox/platform` |
+| 2.6.0 | `contract_call` return_types param, ethers ABI decode for tuples and arrays |
+| 2.7.0 | HITL enforcement: `hcs_write_record` notify tier, loop guard |
+| 2.8.0 | Removed bridge and NFT modules — 20 tools, 6 modules |
+| 2.9.0 | SQLite persistence, deposit watcher, `account_info` free onboarding entrypoint |
+| 3.0.0 | Rebranded to HederaToolbox, custom domain `api.hederatoolbox.com` |
+| 3.1.0 | Atomic balance deduction, HCS message sanitisation, robust JSON parsing, ghost deposit fix |

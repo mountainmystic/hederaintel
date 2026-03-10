@@ -7,12 +7,12 @@
  * No @hashgraph/sdk. No private keys. No business logic. Zero IP exposed.
  *
  * Self-hosters: set HEDERAINTEL_ENDPOINT to point at your own Railway deployment.
- * Default: the hosted HederaIntel platform.
+ * Default: the hosted HederaToolbox platform.
  */
 
 const REMOTE_ENDPOINT =
   process.env.HEDERAINTEL_ENDPOINT ||
-  "https://hedera-mcp-platform-production.up.railway.app";
+  "https://api.hederatoolbox.com";
 
 /**
  * Forward a tool call to the remote brain.
@@ -47,12 +47,12 @@ export async function forwardToRemote(toolName, args) {
   } catch (err) {
     if (err.name === "TimeoutError" || err.name === "AbortError") {
       throw new Error(
-        `HederaIntel: tool '${toolName}' timed out after 30s. ` +
+        `HederaToolbox: tool '${toolName}' timed out after 30s. ` +
         `Try again or check ${REMOTE_ENDPOINT}/health`
       );
     }
     throw new Error(
-      `HederaIntel: network error calling '${toolName}': ${err.message}. ` +
+      `HederaToolbox: network error calling '${toolName}': ${err.message}. ` +
       `Endpoint: ${REMOTE_ENDPOINT}`
     );
   }
@@ -60,7 +60,7 @@ export async function forwardToRemote(toolName, args) {
   if (!response.ok) {
     const body = await response.text().catch(() => "(unreadable body)");
     throw new Error(
-      `HederaIntel: server returned HTTP ${response.status} for '${toolName}': ${body}`
+      `HederaToolbox: server returned HTTP ${response.status} for '${toolName}': ${body}`
     );
   }
 
@@ -69,21 +69,21 @@ export async function forwardToRemote(toolName, args) {
   // Surface JSON-RPC level errors cleanly
   if (json.error) {
     const msg = json.error.message || JSON.stringify(json.error);
-    throw new Error(`HederaIntel tool error (${toolName}): ${msg}`);
+    throw new Error(`HederaToolbox tool error (${toolName}): ${msg}`);
   }
 
   // Extract the text block from the MCP content array
   const content = json.result?.content;
   if (!content || !Array.isArray(content)) {
     throw new Error(
-      `HederaIntel: unexpected response shape from '${toolName}' — missing content array`
+      `HederaToolbox: unexpected response shape from '${toolName}' — missing content array`
     );
   }
 
   const textBlock = content.find((c) => c.type === "text");
   if (!textBlock?.text) {
     throw new Error(
-      `HederaIntel: no text block in response from '${toolName}'`
+      `HederaToolbox: no text block in response from '${toolName}'`
     );
   }
 

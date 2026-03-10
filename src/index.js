@@ -9,7 +9,7 @@ import { TOOLS } from "./tools.js";
 import { forwardToRemote } from "./proxy.js";
 
 const server = new Server(
-  { name: "hederatoolbox", version: "2.0.1" },
+  { name: "hederatoolbox", version: "3.1.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -47,5 +47,5 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 const transport = new StdioServerTransport();
 await server.connect(transport);
 
-const remote = process.env.HEDERATOOLBOX_ENDPOINT || "https://hedera-mcp-platform-production.up.railway.app";
+const remote = process.env.HEDERATOOLBOX_ENDPOINT || "https://api.hederatoolbox.com";
 console.error("[hederatoolbox] connected | remote: " + remote + " | tools: " + TOOLS.length);
