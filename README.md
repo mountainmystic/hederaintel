@@ -187,7 +187,7 @@ Accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`).
 | | |
 |---|---|
 | npm | https://www.npmjs.com/package/@hederatoolbox/platform |
-| MCP Registry | https://registry.modelcontextprotocol.io — search `hederatoolbox` |
+| MCP Registry | https://registry.modelcontextprotocol.io/?q=hederatoolbox |
 | Live endpoint | https://api.hederatoolbox.com/mcp |
 | Terms | https://api.hederatoolbox.com/terms |
 
