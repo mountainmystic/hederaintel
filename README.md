@@ -4,12 +4,25 @@
 
 **20 tools. 6 modules. Pay per call in HBAR. No registration.**
 
-HederaToolbox is a production [Model Context Protocol](https://modelcontextprotocol.io) server. It gives AI agents structured, metered access to the full Hedera ecosystem — HCS topics, tokens, DeFi, identity, smart contracts, NFTs, governance, and compliance.
+HederaToolbox is a production [Model Context Protocol](https://modelcontextprotocol.io) server. It gives AI agents structured, metered access to the full Hedera ecosystem — HCS topics, tokens, identity, smart contracts, governance, and compliance.
 
 Built for agents that need to *reason* about Hedera, not just interact with it.
 
+---
+
+## Demo
+
+**Claude Desktop** — one business objective, no steps specified, agent decides everything:
+
+[![Claude Desktop Demo](https://img.youtube.com/vi/RuZE-Qw7IgU/0.jpg)](https://youtu.be/RuZE-Qw7IgU)
+
+**Terminal agent** — same workflow running as a standalone Node.js script:
+
+[![Terminal Agent Demo](https://img.youtube.com/vi/XhOCLrILg1o/0.jpg)](https://youtu.be/XhOCLrILg1o)
+
 [![npm](https://img.shields.io/npm/v/@hederatoolbox/platform)](https://www.npmjs.com/package/@hederatoolbox/platform)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-listed-blue)](https://registry.modelcontextprotocol.io)
+[![Network](https://img.shields.io/badge/Hedera-Mainnet-8A2BE2)](https://hedera.com)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE.md)
 [![HITL](https://img.shields.io/badge/Safety-HITL%20Enforced-green.svg)](SECURITY.md)
 
@@ -20,6 +33,21 @@ Built for agents that need to *reason* about Hedera, not just interact with it.
 ```
 https://hedera-mcp-platform-production.up.railway.app/mcp
 ```
+
+**For Claude Desktop or Cursor** (recommended — uses the npm proxy):
+
+```json
+{
+  "mcpServers": {
+    "hederatoolbox": {
+      "command": "npx",
+      "args": ["-y", "@hederatoolbox/platform"]
+    }
+  }
+}
+```
+
+**Direct HTTP connection:**
 
 ```json
 {
@@ -35,7 +63,7 @@ https://hedera-mcp-platform-production.up.railway.app/mcp
 
 ## How It Works
 
-HederaIntel uses **agent-native HBAR payments**. No accounts, no OAuth, no email.
+HederaToolbox uses **agent-native HBAR payments**. No accounts, no OAuth, no email.
 
 ```
 1. get_terms        -> read the Terms of Service         (free)
@@ -55,14 +83,14 @@ Credits are persistent. Unused balance carries over indefinitely.
 
 All safety controls run **server-side**. They cannot be bypassed by modifying the npm package.
 
-HITL is enforced on **operation type**, not balance size. HederaIntel is a read and intelligence platform — the risk surface is irreversible on-chain writes and runaway agent loops.
+HITL is enforced on **operation type**, not balance size. HederaToolbox is primarily a read and intelligence platform — the main risk surface is irreversible on-chain writes and runaway agent loops.
 
 | Trigger | Tier | Behaviour |
 |---|---|---|
-| Any tool call | Consent gate | `confirm_terms` required |
-| `hcs_write_record` | Notify | Executes immediately — webhook notification sent to operator |
-| Same tool >20 calls in 60s | Loop guard | Blocked — agent must wait 60s |
-| All other tools | Auto | Executes immediately |
+| Any paid tool call | Consent gate | `confirm_terms` required before first call |
+| `hcs_write_record` | Notify | Executes immediately — operator notified via webhook |
+| Same tool called >20 times in 60s | Loop guard | Blocked — agent must wait 60 seconds before retrying |
+| All other tools | Auto | Executes immediately, no intervention |
 
 Terms of Service: `get_terms` tool or [/public/terms.json](https://hedera-mcp-platform-production.up.railway.app/public/terms.json)
 
@@ -141,13 +169,13 @@ Accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`).
 
 ---
 
-## What's New in v2.9.0
+## What's New in v3.1.0
 
-- **Leaner tool set** — removed `defi_yields` and entire NFT module; 20 focused tools across 6 modules
-- **New operator wallet** — platform wallet updated to `0.0.10309126`
-- **`contract_call` return type decoding** — pass `return_types` for precise ABI decoding of tuples, arrays, and multi-value returns
-- **EVM address support** — all identity and contract tools accept `0x...` addresses directly
-- **Live HBAR/USD pricing** — `account_info` shows real-time USD cost for every tool
+- **Atomic balance deduction** — balance check and deduct now a single SQL operation, safe under any concurrency
+- **HCS message sanitisation** — control characters and malformed content stripped before AI analysis
+- **Robust JSON parsing** — AI responses now use a fallback parser; one bad HCS message can no longer crash the analysis tools
+- **Telegram operator bot** — `/status`, `/accounts`, `/balance`, `/digest` commands, daily digest at 08:00 UTC, watcher error alerts
+- **Ghost deposit fix** — zero-value staking redistribution entries no longer trigger false deposit notifications
 
 ---
 
@@ -175,3 +203,11 @@ Accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`).
 **Remote server and all backend logic** — Proprietary. See [LICENSE.md](LICENSE.md).
 
 Enterprise licensing and SLA inquiries: open an issue titled `[Enterprise]`.
+
+---
+
+## Website
+
+[hederatoolbox.com](https://hederatoolbox.com)
+
+
