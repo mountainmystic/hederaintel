@@ -23,10 +23,20 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
+const MAX_BODY_BYTES = 1_048_576; // 1MB — reject anything larger before full read
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
-    req.on("data", (chunk) => (body += chunk));
+    let size = 0;
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        req.destroy();
+        return reject(Object.assign(new Error("Request body too large"), { code: 413 }));
+      }
+      body += chunk;
+    });
     req.on("end", () => resolve(body));
     req.on("error", reject);
   });
@@ -53,6 +63,11 @@ const startTime = Date.now();
 
 const httpServer = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
+
+  // Wrap entire handler to catch 413 from readBody()
+  req.on("error", (e) => {
+    if (!res.headersSent) json(res, 413, { error: "Request body too large. Maximum size is 1MB." });
+  });
 
   if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
     return json(res, 200, {
