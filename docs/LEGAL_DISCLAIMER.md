@@ -6,9 +6,10 @@
 
 ## What This Service Does
 
-HederaIntel gives AI agents access to Hedera blockchain data — token prices,
-NFT metadata, governance proposals, identity checks, smart contract analysis,
-and more. You pay small amounts of HBAR per query. That's it.
+HederaToolbox gives AI agents access to Hedera blockchain data — token prices,
+governance proposals, identity checks, smart contract analysis, compliance
+records, and more. You pay small amounts of HBAR per tool call. No registration
+required.
 
 ---
 
@@ -32,9 +33,8 @@ already charged you for the query (we hit the network). **No refunds for
 reverted transactions.**
 
 ### 4. Network Outages
-Hedera mainnet, mirror nodes, and Railway (our hosting provider) can all go
-down. We provide no uptime SLA for free-tier or HBAR-credit users. Enterprise
-SLAs are available by separate agreement.
+Hedera mainnet and mirror nodes can go down. We provide no uptime SLA for
+HBAR-credit users. Enterprise SLAs are available by separate agreement.
 
 ### 5. Regulatory Compliance
 We provide data. You must comply with your local laws around financial data,
@@ -43,20 +43,16 @@ jurisdiction. **We are a data API, not a regulated financial institution.**
 
 ---
 
-## The Human-in-the-Loop (HITL) System
+## Safety Controls
 
-We have built safety rails into the platform:
+All controls are enforced server-side and cannot be bypassed by modifying
+the npm package:
 
-| Transaction Size | What Happens |
+| Trigger | Behaviour |
 |---|---|
-| < 500 HBAR | Executes automatically |
-| 500–5,000 HBAR | Executes, you get a webhook notification |
-| > 10,000 HBAR | **Blocked.** Requires a human to click an approval URL. |
-| Admin ops (e.g. `updateAdminKey`) | **Always blocked** until human approves |
-
-**Important:** These are defaults. They protect you. Disabling or circumventing
-them is your own risk and we accept no liability for losses resulting from
-bypassed thresholds.
+| Any tool call | `confirm_terms` must have been accepted for current terms version |
+| Any tool called >20 times in 60s by same key | Blocked for 60 seconds. Prevents runaway agent loops. |
+| All other tools | Execute immediately |
 
 ---
 
@@ -68,8 +64,8 @@ Every AI agent must:
 2. Call `confirm_terms` to record their acceptance.
 3. Then — and only then — can they call paid tools.
 
-This isn't bureaucracy. It's a legally meaningful consent event recorded with
-a timestamp on our servers. It protects both of us.
+This is a legally meaningful consent event recorded with a timestamp on our
+servers. It protects both of us.
 
 ---
 
@@ -101,4 +97,4 @@ issue title and we'll respond within 2 business days.
 ---
 
 *This plain-English disclaimer does not replace the full legal Terms of Service
-in `legal/terms.json`. In case of conflict, the terms.json governs.*
+at hederatoolbox.com/terms.html. In case of conflict, those terms govern.*

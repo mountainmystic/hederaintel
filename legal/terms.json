@@ -4,7 +4,7 @@
   "service": {
     "name": "HederaToolbox MCP Platform",
     "provider": "mountainmystic",
-    "version": "2.9.0",
+    "version": "3.3.1",
     "terms_version": "1.0.0",
     "effective_date": "2026-03-01",
     "jurisdiction": "British Columbia, Canada",
@@ -22,8 +22,8 @@
       "Reverse engineer or decompile the remote server logic",
       "Redistribute or resell API access to third parties without written agreement",
       "Use the service to facilitate illegal transactions or sanctions evasion",
-      "Automate transactions exceeding HITL thresholds without human approval",
-      "Attempt to bypass consent or credit check mechanisms"
+      "Attempt to bypass consent or credit check mechanisms",
+      "Conduct denial-of-service attacks or intentional abuse of free endpoints"
     ]
   },
   "pricing": {
@@ -77,25 +77,20 @@
       "No refunds for consumed credits."
     ]
   },
-  "human_in_the_loop": {
-    "description": "HITL is enforced on operation type, not balance size. HederaIntel is a read and intelligence platform. The risk surface is irreversible on-chain writes and runaway agent loops.",
-    "enforcement": "server-side — cannot be bypassed by modifying the npm package",
-    "tiers": {
+  "safety": {
+    "description": "All safety controls are enforced server-side and cannot be bypassed by modifying the npm package.",
+    "controls": {
       "consent_gate": {
         "trigger": "Every tool call",
         "action": "confirm_terms must have been called for the current terms version. Rejected otherwise."
       },
-      "auto": {
-        "trigger": "All read and analysis tools",
-        "action": "Execute immediately. No HITL."
-      },
-      "notify": {
-        "trigger": "hcs_write_record",
-        "action": "Executes immediately. Webhook notification sent to HITL_WEBHOOK_URL if configured."
-      },
       "loop_guard": {
         "trigger": "Same tool called more than 20 times in 60 seconds by the same API key",
-        "action": "Blocked for 60 seconds. Webhook alert sent. Prevents runaway agent loops."
+        "action": "Blocked for 60 seconds. Prevents runaway agent loops."
+      },
+      "auto": {
+        "trigger": "All other tool calls",
+        "action": "Execute immediately."
       }
     }
   },
@@ -103,15 +98,16 @@
     "disclaimer": "THIS SERVICE IS PROVIDED 'AS IS' WITHOUT WARRANTY OF ANY KIND. THE PROVIDER IS NOT RESPONSIBLE FOR: (a) Financial losses resulting from AI agent decisions; (b) Incorrect or outdated blockchain data; (c) Smart contract execution failures; (d) Network outages or mirror node unavailability; (e) Any consequential, incidental, or punitive damages.",
     "user_responsibilities": [
       "You are solely responsible for validating all data before acting on it.",
-      "You are responsible for configuring HITL thresholds appropriate to your risk tolerance.",
       "You must ensure your AI agents do not execute transactions prohibited by applicable law.",
-      "You must comply with all applicable AML, KYC, and sanctions regulations in your jurisdiction."
+      "You must comply with all applicable AML, KYC, and sanctions regulations in your jurisdiction.",
+      "You are responsible for the behaviour of any agent operating under your Hedera account ID."
     ],
     "max_liability": "Maximum liability is limited to the HBAR credits consumed in the 30 days preceding the claim."
   },
   "data": {
     "stored": ["Hedera account ID (API key)", "HBAR balance", "Tool call history", "Consent timestamp and terms version"],
-    "not_stored": ["Private keys", "Personal identity information", "IP addresses (beyond ephemeral rate limiting)"],
+    "not_stored": ["Private keys", "Personal identity documents", "Email addresses"],
+    "pii_note": "IP addresses and user-agent strings collected at consent time are automatically purged after 90 days.",
     "retention": "Account data retained until account balance reaches zero and 90 days have elapsed with no activity.",
     "gdpr_note": "For data deletion requests, contact the provider via GitHub issues."
   },
