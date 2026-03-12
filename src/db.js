@@ -51,11 +51,18 @@ db.exec(`
     timestamp       TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS rate_limits (
+    ip           TEXT NOT NULL,
+    window_start INTEGER NOT NULL,
+    count        INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (ip)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_accounts_hedera ON accounts(hedera_account_id);
   CREATE INDEX IF NOT EXISTS idx_transactions_api_key ON transactions(api_key);
   CREATE INDEX IF NOT EXISTS idx_deposits_hedera ON deposits(hedera_account_id);
   CREATE INDEX IF NOT EXISTS idx_consent_api_key ON consent_events(api_key);
-`};
+`);
 
 // ─────────────────────────────────────────────
 // Prepared statements (compiled once, reused)
@@ -227,6 +234,40 @@ export function hasConsented(apiKey, termsVersion) {
 
 export function getLatestConsent(apiKey) {
   return consentStmts.getLatest.get(apiKey) || null;
+}
+
+// ─────────────────────────────────────────────
+// Rate limiting (SQLite-backed — survives restarts)
+// ─────────────────────────────────────────────
+
+const rateLimitStmts = {
+  get:    db.prepare(`SELECT window_start, count FROM rate_limits WHERE ip = ?`),
+  upsert: db.prepare(`
+    INSERT INTO rate_limits (ip, window_start, count) VALUES (?, ?, 1)
+    ON CONFLICT(ip) DO UPDATE SET
+      window_start = CASE WHEN excluded.window_start != rate_limits.window_start THEN excluded.window_start ELSE rate_limits.window_start END,
+      count        = CASE WHEN excluded.window_start != rate_limits.window_start THEN 1 ELSE rate_limits.count + 1 END
+  `),
+};
+
+// Returns true if the IP is over the limit.
+// Sliding window: FREE_RATE_LIMIT calls per FREE_RATE_WINDOW_MS.
+// Also enforces a daily cap (FREE_DAILY_CAP) that resets at midnight UTC.
+const FREE_RATE_LIMIT   = 30;           // max calls per 60s window
+const FREE_RATE_WINDOW  = 60_000;       // 60 seconds in ms
+const FREE_DAILY_CAP    = 500;          // max calls per day per IP
+
+export function checkRateLimit(ip) {
+  const now         = Date.now();
+  const windowStart = now - (now % FREE_RATE_WINDOW); // floor to current 60s bucket
+
+  rateLimitStmts.upsert.run(ip, windowStart);
+  const row = rateLimitStmts.get.get(ip);
+
+  // Within the current window
+  if (row.window_start === windowStart && row.count > FREE_RATE_LIMIT) return true;
+
+  return false;
 }
 
 export { db };

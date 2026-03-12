@@ -4,7 +4,7 @@
 import "dotenv/config";
 import { createServer, ALL_TOOLS } from "./server.js";
 import { getCosts } from "./payments.js";
-import { provisionKey, getAllAccounts, getRecentTransactions } from "./db.js";
+import { provisionKey, getAllAccounts, getRecentTransactions, checkRateLimit } from "./db.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -49,21 +49,7 @@ const startTime = Date.now();
 
 // ── Rate limiter for free endpoints ──────────────────────────────────────────
 // Simple in-memory store: ip -> { count, windowStart }
-const FREE_RATE_LIMIT = 30;        // max calls per window
-const FREE_RATE_WINDOW_MS = 60_000; // 60 seconds
-const rateLimitStore = new Map();
-
-function isRateLimited(ip) {
-  const now = Date.now();
-  const entry = rateLimitStore.get(ip);
-  if (!entry || (now - entry.windowStart) > FREE_RATE_WINDOW_MS) {
-    rateLimitStore.set(ip, { count: 1, windowStart: now });
-    return false;
-  }
-  entry.count++;
-  if (entry.count > FREE_RATE_LIMIT) return true;
-  return false;
-}
+// SQLite-backed — survives restarts. Logic in db.js checkRateLimit().
 
 const httpServer = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
@@ -94,7 +80,7 @@ const httpServer = http.createServer(async (req, res) => {
   // Rate limit free MCP onboarding endpoints
   if (["get_terms", "confirm_terms", "account_info"].some(t => url.pathname.includes(t))) {
     const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() || req.socket.remoteAddress;
-    if (isRateLimited(ip)) {
+    if (checkRateLimit(ip)) {
       return json(res, 429, { error: "Rate limit exceeded. Max 30 requests per 60 seconds.", retry_after_seconds: 60 });
     }
   }
