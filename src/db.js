@@ -51,24 +51,11 @@ db.exec(`
     timestamp       TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
-  CREATE TABLE IF NOT EXISTS hitl_events (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    api_key         TEXT NOT NULL,
-    tool_name       TEXT NOT NULL,
-    amount_hbar     REAL NOT NULL,
-    tier            TEXT NOT NULL,
-    approval_token  TEXT UNIQUE,
-    status          TEXT NOT NULL DEFAULT 'pending',
-    webhook_sent    INTEGER NOT NULL DEFAULT 0,
-    timestamp       TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-
   CREATE INDEX IF NOT EXISTS idx_accounts_hedera ON accounts(hedera_account_id);
   CREATE INDEX IF NOT EXISTS idx_transactions_api_key ON transactions(api_key);
   CREATE INDEX IF NOT EXISTS idx_deposits_hedera ON deposits(hedera_account_id);
   CREATE INDEX IF NOT EXISTS idx_consent_api_key ON consent_events(api_key);
-  CREATE INDEX IF NOT EXISTS idx_hitl_token ON hitl_events(approval_token);
-`);
+`};
 
 // ─────────────────────────────────────────────
 // Prepared statements (compiled once, reused)
@@ -240,36 +227,6 @@ export function hasConsented(apiKey, termsVersion) {
 
 export function getLatestConsent(apiKey) {
   return consentStmts.getLatest.get(apiKey) || null;
-}
-
-// ─────────────────────────────────────────────
-// HITL events
-// ─────────────────────────────────────────────
-
-const hitlStmts = {
-  insert: db.prepare(`
-    INSERT INTO hitl_events (api_key, tool_name, amount_hbar, tier, approval_token, status)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `),
-  getByToken: db.prepare(`SELECT * FROM hitl_events WHERE approval_token = ?`),
-  updateStatus: db.prepare(`UPDATE hitl_events SET status = ? WHERE approval_token = ?`),
-  markWebhookSent: db.prepare(`UPDATE hitl_events SET webhook_sent = 1 WHERE approval_token = ?`),
-};
-
-export function createHITLEvent(apiKey, toolName, amountHbar, tier, approvalToken) {
-  hitlStmts.insert.run(apiKey, toolName, amountHbar, tier, approvalToken, 'pending');
-}
-
-export function getHITLEvent(approvalToken) {
-  return hitlStmts.getByToken.get(approvalToken) || null;
-}
-
-export function approveHITLEvent(approvalToken) {
-  hitlStmts.updateStatus.run('approved', approvalToken);
-}
-
-export function markWebhookSent(approvalToken) {
-  hitlStmts.markWebhookSent.run(approvalToken);
 }
 
 export { db };

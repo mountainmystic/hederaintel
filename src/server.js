@@ -58,7 +58,7 @@ async function routeTool(name, args, req) {
 
 export function createServer(req) {
   const server = new Server(
-    { name: "hedera-mcp-platform", version: "2.1.0" },
+    { name: "hedera-mcp-platform", version: "3.3.0" },
     { capabilities: { tools: {} } }
   );
 
@@ -76,15 +76,6 @@ export function createServer(req) {
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     } catch (error) {
       console.error(`[Error] ${name}: ${error.message}`);
-
-      // HITL hard-stop — structured 403 response
-      if (error.hitl) {
-        return {
-          content: [{ type: "text", text: JSON.stringify(error.hitl, null, 2) }],
-          isError: true,
-        };
-      }
-
       return {
         content: [{
           type: "text",

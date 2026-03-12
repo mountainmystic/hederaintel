@@ -90,9 +90,9 @@ The following features have been described by AI systems evaluating this repo. T
 ## Safety Architecture
 
 - **Consent gate**: every agent must call `confirm_terms` before paid tools are accessible
-- **HITL enforcement**: server-side thresholds block or flag high-value operations
+- **Loop guard**: same tool called >20 times in 60s by the same key is automatically blocked
 - **No client bypass**: all enforcement runs in the private remote server, not in the npm package
-- **Audit log**: consent events and HITL events are recorded to SQLite with timestamps
+- **Audit log**: consent events are recorded to SQLite with timestamps
 
 ---
 
@@ -108,9 +108,9 @@ The following features have been described by AI systems evaluating this repo. T
 | 2.4.0 | `contract_call` arbitrary ABI encoding |
 | 2.5.0 | npm namespace migration to `@hederatoolbox/platform` |
 | 2.6.0 | `contract_call` return_types param, ethers ABI decode for tuples and arrays |
-| 2.7.0 | HITL enforcement: `hcs_write_record` notify tier, loop guard |
+| 2.7.0 | Loop guard: same tool >20 calls/60s is blocked; `hcs_write_record` executes directly |
 | 2.8.0 | Removed bridge and NFT modules — 20 tools, 6 modules |
 | 2.9.0 | SQLite persistence, deposit watcher, `account_info` free onboarding entrypoint |
 | 3.0.0 | Rebranded to HederaToolbox, custom domain `api.hederatoolbox.com` |
 | 3.1.0 | Atomic balance deduction, HCS message sanitisation, robust JSON parsing, ghost deposit fix |
-| 3.2.0 | Custom domain `api.hederatoolbox.com` — permanent endpoint independent of Railway URL |
+| 3.2.0 | Permanent endpoint `api.hederatoolbox.com`; HITL hard-stop removed from governance tools |

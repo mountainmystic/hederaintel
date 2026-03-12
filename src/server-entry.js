@@ -4,7 +4,7 @@
 import "dotenv/config";
 import { createServer, ALL_TOOLS } from "./server.js";
 import { getCosts } from "./payments.js";
-import { provisionKey, getAllAccounts, getRecentTransactions, getHITLEvent, approveHITLEvent } from "./db.js";
+import { provisionKey, getAllAccounts, getRecentTransactions } from "./db.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -112,23 +112,6 @@ const httpServer = http.createServer(async (req, res) => {
       return json(res, 404, { error: "File not found" });
     }
     return;
-  }
-
-  // HITL approval endpoint — human clicks this URL to unblock a hard-stop
-  if (req.method === "GET" && url.pathname.startsWith("/hitl/approve/")) {
-    const token = url.pathname.split("/").pop();
-    const event = getHITLEvent(token);
-    if (!event) return json(res, 404, { error: "Approval token not found" });
-    if (event.status === "approved") return json(res, 200, { message: "Already approved", event });
-    approveHITLEvent(token);
-    return json(res, 200, {
-      message: "Approved. The pending tool call may now be retried by the agent.",
-      approval_token: token,
-      tool: event.tool_name,
-      api_key: event.api_key,
-      amount_hbar: event.amount_hbar,
-      approved_at: new Date().toISOString(),
-    });
   }
 
   // Telegram webhook — Telegram POSTs incoming messages here

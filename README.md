@@ -24,7 +24,6 @@ Built for agents that need to *reason* about Hedera, not just interact with it.
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-listed-blue)](https://registry.modelcontextprotocol.io)
 [![Network](https://img.shields.io/badge/Hedera-Mainnet-8A2BE2)](https://hedera.com)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE.md)
-[![HITL](https://img.shields.io/badge/Safety-HITL%20Enforced-green.svg)](SECURITY.md)
 
 ---
 
@@ -75,18 +74,13 @@ Credits are persistent. Unused balance carries over indefinitely.
 
 ---
 
-## Enterprise Safety — HITL Enforcement
+## Safety Architecture
 
-All safety controls run **server-side**. They cannot be bypassed by modifying the npm package.
+All safety controls run **server-side** and cannot be bypassed by modifying the npm package.
 
-HITL is enforced on **operation type**, not balance size. HederaToolbox is primarily a read and intelligence platform — the main risk surface is irreversible on-chain writes and runaway agent loops.
-
-| Trigger | Tier | Behaviour |
-|---|---|---|
-| Any paid tool call | Consent gate | `confirm_terms` required before first call |
-| `hcs_write_record` | Notify | Executes immediately — operator notified via webhook |
-| Same tool called >20 times in 60s | Loop guard | Blocked — agent must wait 60 seconds before retrying |
-| All other tools | Auto | Executes immediately, no intervention |
+- **Consent gate** — `confirm_terms` required before any paid tool executes
+- **Atomic balance deduction** — balance check and deduct are a single SQL operation, race-condition proof
+- **Loop guard** — same tool called >20 times in 60s by the same key is blocked automatically
 
 Terms of Service: `get_terms` tool or [/public/terms.json](https://api.hederatoolbox.com/public/terms.json)
 
@@ -167,7 +161,8 @@ Accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`).
 
 ## What's New in v3.2.0
 
-- **Custom domain** — MCP endpoint is now `https://api.hederatoolbox.com/mcp` (permanent, Railway-independent)
+- **Permanent endpoint** — MCP endpoint is now `https://api.hederatoolbox.com/mcp`
+- **Removed HITL hard-stop** — governance tools now execute directly; operator approval flow removed
 
 ## What's New in v3.1.0
 
