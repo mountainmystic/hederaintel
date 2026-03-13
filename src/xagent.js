@@ -99,14 +99,39 @@ async function callTool(toolName, toolArgs = {}) {
       res.on("data", c => data += c);
       res.on("end", () => {
         try {
-          // Handle SSE or plain JSON
-          const lines = data.split("\n").filter(l => l.startsWith("data:"));
-          const jsonStr = lines.length > 0 ? lines[lines.length - 1].replace(/^data:\s*/, "") : data;
-          const parsed = JSON.parse(jsonStr);
-          const content = parsed?.result?.content?.[0]?.text || JSON.stringify(parsed?.result || {});
-          resolve({ tool: toolName, success: true, content });
-        } catch {
-          resolve({ tool: toolName, success: false, content: "parse error" });
+          console.error(`[XAgent] Raw response for ${toolName} (${data.length} bytes):`, data.slice(0, 300));
+          // MCP SSE format: multiple "data: {...}" lines, last non-empty one has the result
+          const lines = data.split("\n")
+            .filter(l => l.startsWith("data:"))
+            .map(l => l.replace(/^data:\s*/, "").trim())
+            .filter(l => l && l !== "[DONE]");
+          // Try each data line from last to first, find one with a result
+          let content = null;
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const parsed = JSON.parse(lines[i]);
+              const text = parsed?.result?.content?.[0]?.text
+                || parsed?.params?.content?.[0]?.text
+                || (parsed?.result ? JSON.stringify(parsed.result) : null);
+              if (text) { content = text; break; }
+            } catch { continue; }
+          }
+          // Fallback: try parsing entire response as JSON
+          if (!content) {
+            try {
+              const parsed = JSON.parse(data);
+              content = parsed?.result?.content?.[0]?.text || JSON.stringify(parsed?.result || parsed);
+            } catch { content = null; }
+          }
+          if (content) {
+            resolve({ tool: toolName, success: true, content });
+          } else {
+            console.error(`[XAgent] No content found in response for ${toolName}`);
+            resolve({ tool: toolName, success: false, content: "no content in response" });
+          }
+        } catch (e) {
+          console.error(`[XAgent] Parse error for ${toolName}:`, e.message);
+          resolve({ tool: toolName, success: false, content: `parse error: ${e.message}` });
         }
       });
     });
@@ -127,9 +152,10 @@ export async function runXAgentCycle(label = "scheduled") {
   console.error(`[XAgent] Starting ${label} run`);
 
   // Call 4 tools in parallel — if any fail, log and continue with remaining data
+  // SAUCE (0.0.731861) is the most liquid mainnet token on SaucerSwap — reliable price data
   const results = await Promise.all([
-    callTool("token_price",        { token_id: "0.0.1456986" }),  // HBAR
-    callTool("token_monitor",      { token_id: "0.0.1456986" }),
+    callTool("token_price",        { token_id: "0.0.731861" }),   // SAUCE token
+    callTool("token_monitor",      { token_id: "0.0.731861" }),
     callTool("governance_monitor", {}),
     callTool("hcs_understand",     { topic_id: "0.0.10353855" }), // platform compliance topic
   ]);
