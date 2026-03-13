@@ -159,17 +159,16 @@ Accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`).
 
 ---
 
-## What's New in v3.2.0
+## What's New in v3.4.0
 
-- **Permanent endpoint** — MCP endpoint is now `https://api.hederatoolbox.com/mcp`
-- **Removed HITL hard-stop** — governance tools now execute directly; operator approval flow removed
+- **Repriced all tools** — prices updated across all 6 modules to reflect platform maturity and value delivered
 
-## What's New in v3.1.0
+## What's New in v3.3.0
 
-- **Atomic balance deduction** — balance check and deduct now a single SQL operation, safe under any concurrency
-- **HCS message sanitisation** — control characters and malformed content stripped before AI analysis
-- **Robust JSON parsing** — AI responses now use a fallback parser; one bad HCS message can no longer crash the analysis tools
-- **Ghost deposit fix** — zero-value staking redistribution entries no longer trigger false deposit notifications
+- **Full security audit** — SQLite-backed rate limiting, API key format validation, request body size limiting, separate BACKUP_SECRET, 90-day auto-purge of IP/user-agent from consent records
+- **HITL removed** — human-in-the-loop hard-stop removed entirely; all tools execute directly
+- **Legal pages** — Privacy Policy and Terms of Service published at hederatoolbox.com
+- **Permanent endpoint** — MCP endpoint is `https://api.hederatoolbox.com/mcp`
 
 ## Known Limitations
 
