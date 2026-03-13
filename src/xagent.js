@@ -365,8 +365,10 @@ export function scheduleXAgent() {
     return;
   }
 
-  // 08:00 and 20:00 UTC daily
-  for (const hour of [8, 20]) {
+  // 12:00 and 20:00 UTC daily — peak US/EU engagement windows
+  // 12:00 UTC = 05:00 PDT (approve with morning coffee)
+  // 20:00 UTC = 13:00 PDT (approve at desk)
+  for (const hour of [12, 20]) {
     const now  = new Date();
     const next = new Date();
     next.setUTCHours(hour, 0, 0, 0);
