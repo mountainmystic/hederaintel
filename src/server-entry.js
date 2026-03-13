@@ -453,6 +453,7 @@ purgeOldConsentPII();
 // Sends a morning summary to the owner so you wake up knowing how the
 // platform performed overnight without having to check anything manually.
 import { notifyOwner } from "./telegram.js";
+import { scheduleXAgent } from "./xagent.js";
 
 function scheduleDailyDigest() {
   const now = new Date();
@@ -506,6 +507,7 @@ function scheduleDailyDigest() {
 
 if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_OWNER_ID) {
   scheduleDailyDigest();
+  scheduleXAgent();
 } else {
   console.error("[Digest] Telegram not configured — daily digest disabled");
 }

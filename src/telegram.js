@@ -202,6 +202,12 @@ function addToHistory(chatId, role, content) {
 // ─── Handle incoming Telegram update ─────────────────────────────────────────
 
 export async function handleTelegramUpdate(update) {
+  // Handle inline button taps (callback_query from xagent drafts)
+  if (update.callback_query) {
+    const { handleXAgentCallback } = await import("./xagent.js");
+    return handleXAgentCallback(update.callback_query);
+  }
+
   const msg = update.message || update.edited_message;
   if (!msg || !msg.text) return;
 
@@ -209,6 +215,24 @@ export async function handleTelegramUpdate(update) {
   const userId   = msg.from?.id;
   const username = msg.from?.username ? `@${msg.from.username}` : msg.from?.first_name || "Someone";
   const text     = msg.text.trim();
+
+  // /edit <text> — owner revises a draft tweet for copy-paste
+  const isOwner = String(userId) === String(OWNER_ID);
+  if (text.startsWith("/edit ") && isOwner) {
+    const newText = text.slice(6).trim();
+    if (!newText) return sendMessage(chatId, "Usage: /edit <revised tweet text>");
+    const { handleXAgentEdit } = await import("./xagent.js");
+    return handleXAgentEdit(chatId, newText);
+  }
+
+  // /xagent — trigger a manual run (owner only)
+  if (text === "/xagent") {
+    if (!isOwner) return sendMessage(chatId, "⛔ Owner only.");
+    await sendMessage(chatId, "▶️ Running XAgent cycle now...");
+    const { runXAgentCycle } = await import("./xagent.js");
+    runXAgentCycle("manual").catch(e => sendMessage(chatId, `❌ XAgent error: ${e.message}`));
+    return;
+  }
 
   // /start command
   if (text === "/start") {
@@ -233,8 +257,6 @@ export async function handleTelegramUpdate(update) {
   }
 
   // ── Owner-only commands ───────────────────────────────────────────────────
-  // Guard: only the owner can run these
-  const isOwner = String(userId) === String(OWNER_ID);
 
   // /status — platform health snapshot
   if (text === "/status") {
