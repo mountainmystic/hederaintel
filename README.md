@@ -27,6 +27,60 @@ Built for agents that need to *reason* about Hedera, not just interact with it.
 
 ---
 
+## Autonomous Agent Example
+
+**[`examples/whale-alert-agent.mjs`](examples/whale-alert-agent.mjs)** — a production-ready autonomous agent that monitors any Hedera token for whale concentration, writes a tamper-proof alert to the Hedera blockchain when an anomaly is detected, and prints the on-chain proof link. Runs forever on a schedule. Zero dependencies beyond Node.js 18+.
+
+**What it does:**
+- Calls `token_monitor` on your chosen token every hour
+- Detects when top-10 holders exceed a configurable concentration threshold
+- Writes a `whale_alert` record to HCS via `hcs_write_record` — permanently on-chain
+- Prints the [Hashscan](https://hashscan.io) proof URL so you can verify the alert independently
+
+**Setup — 5 minutes:**
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/mountainmystic/hederatoolbox.git
+cd hederatoolbox
+
+# 2. Send any amount of HBAR to the platform wallet from your Hedera account
+#    Your account ID becomes your API key automatically within 10 seconds.
+#    Platform wallet: 0.0.10309126
+
+# 3. Run the agent — replace with your account ID and token
+HEDERA_ACCOUNT_ID=0.0.YOUR_ID TOKEN_ID=0.0.731861 node examples/whale-alert-agent.mjs
+```
+
+**Or edit the config directly** at the top of the file:
+
+```js
+const API_KEY   = "0.0.YOUR_ACCOUNT_ID";  // your Hedera account ID
+const TOKEN_ID  = "0.0.731861";           // token to monitor (SAUCE by default)
+const THRESHOLD_PCT     = 80;             // alert if top-10 holders exceed this %
+const CHECK_INTERVAL_MS = 3600000;        // check every hour (in milliseconds)
+```
+
+**Cost:** `0.2 ℏ` per check · `5 ℏ` only when an anomaly fires · `10 ℏ` covers ~2 days of monitoring
+
+**Example output when an anomaly is detected:**
+
+```
+==============================================================
+ 🚨 WHALE ALERT — SAUCE (0.0.731861)
+ Top-10 concentration: 84.3%  (threshold: 80%)
+   ⚠  HIGH CONCENTRATION - Top 10 holders control 84.3% of supply
+ HCS Record ID:  a3f2c1d4-...
+ Transaction ID: 0.0.10309126@1741234567.000000000
+ On-chain proof: https://hashscan.io/mainnet/transaction/0.0.10309126@1741234567.000000000
+ Balance after:  4.8000 ℏ
+==============================================================
+```
+
+Fork it, swap the token ID, and you have a live on-chain monitoring agent in under 5 minutes.
+
+---
+
 ## Connect
 
 **MCP endpoint:**
