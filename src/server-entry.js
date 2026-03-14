@@ -450,23 +450,71 @@ function getDashboardHTML() {
   <button class="btn" onclick="loadAll()">Refresh</button>
 </header>
 
-<!-- KPI row -->
-<div class="p">
-  <div class="grid-5" id="kpi-grid">
-    <div class="card"><div class="card-label">Total Calls</div><div class="card-value" id="kpi-calls">—</div></div>
-    <div class="card"><div class="card-label">Accounts</div><div class="card-value" id="kpi-accounts">—</div><div class="card-sub" id="kpi-avg-calls"></div></div>
-    <div class="card"><div class="card-label">Total Deposited</div><div class="card-value" id="kpi-deposited">—</div><div class="card-sub">ℏ received</div></div>
-    <div class="card"><div class="card-label">This Month</div><div class="card-value" id="kpi-month-hbar">—</div><div class="card-sub" id="kpi-month-delta"></div></div>
-    <div class="card"><div class="card-label">Rate Limit Hits</div><div class="card-value" id="kpi-ratelimit">—</div><div class="card-sub">last 24h</div></div>
+<!-- Main layout: left sidebar controls + right data panel -->
+<div style="display:grid;grid-template-columns:280px 1fr;gap:0;min-height:calc(100vh - 49px)">
+
+<!-- LEFT: Controls -->
+<div style="border-right:1px solid #1a1a1a;padding:20px;display:flex;flex-direction:column;gap:16px">
+
+  <!-- KPI stack -->
+  <div class="card"><div class="card-label">Total Calls</div><div class="card-value" id="kpi-calls">—</div></div>
+  <div class="card"><div class="card-label">Accounts</div><div class="card-value" id="kpi-accounts">—</div><div class="card-sub" id="kpi-avg-calls"></div></div>
+  <div class="card"><div class="card-label">Total Deposited</div><div class="card-value" id="kpi-deposited">—</div><div class="card-sub">ℏ received</div></div>
+  <div class="card"><div class="card-label">This Month</div><div class="card-value" id="kpi-month-hbar">—</div><div class="card-sub" id="kpi-month-delta"></div></div>
+  <div class="card"><div class="card-label">Rate Limit Hits</div><div class="card-value" id="kpi-ratelimit">—</div><div class="card-sub">last 24h</div></div>
+
+  ${hasXAgent ? `<!-- X Agent -->
+  <div style="border-top:1px solid #1a1a1a;padding-top:16px">
+    <div class="sec-head">X Agent</div>
+    <div class="card" style="margin-bottom:8px"><div class="card-label">Balance</div><div class="card-value" id="xa-balance">—</div><div class="card-sub">xagent-internal</div></div>
+    <div class="card" style="margin-bottom:8px"><div class="card-label">Calls (24h)</div><div class="card-value" id="xa-calls">—</div><div class="card-sub" id="xa-spent"></div></div>
+    <div class="card"><div class="card-label">Last Active</div><div class="card-value" style="font-size:15px" id="xa-last">—</div></div>
+  </div>` : ''}
+
+  <!-- Provision / Top Up -->
+  <div style="border-top:1px solid #1a1a1a;padding-top:16px">
+    <div class="sec-head">Provision / Top Up</div>
+    <div style="font-size:11px;color:#444;margin-bottom:8px">Add balance to any internal account key.</div>
+    <input id="ctrl-key" placeholder="API key (e.g. xagent-internal)" style="width:100%;background:#0a0a0a;border:1px solid #2a2a2a;color:#e0e0e0;padding:7px 9px;border-radius:6px;font-size:12px;margin-bottom:8px">
+    <input id="ctrl-hbar" placeholder="HBAR amount" type="number" style="width:100%;background:#0a0a0a;border:1px solid #2a2a2a;color:#e0e0e0;padding:7px 9px;border-radius:6px;font-size:12px;margin-bottom:10px">
+    <button class="btn green" style="width:100%" onclick="doProvision()">Provision / Top Up</button>
+    <div id="ctrl-result" style="font-size:11px;color:#4ade80;margin-top:8px;min-height:16px"></div>
   </div>
+
+  <!-- Platform wallet -->
+  <div style="border-top:1px solid #1a1a1a;padding-top:16px">
+    <div class="sec-head">Platform Wallet</div>
+    <div class="qr-inline">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=56x56&data=${platformAccount}" width="56" height="56" alt="QR">
+      <div>
+        <div class="mono" style="color:#4ade80;font-size:11px">${platformAccount}</div>
+        <div style="font-size:10px;color:#444;margin-top:3px">Send HBAR to top up</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GDPR delete -->
+  <div style="border-top:1px solid #1a1a1a;padding-top:16px">
+    <div class="sec-head">GDPR Delete Account</div>
+    <input id="del-key" placeholder="API key to delete" style="width:100%;background:#0a0a0a;border:1px solid #2a2a2a;color:#e0e0e0;padding:7px 9px;border-radius:6px;font-size:12px;margin-bottom:8px">
+    <button class="btn danger" style="width:100%" onclick="openDeleteModal()">Delete Account…</button>
+    <div style="font-size:10px;color:#333;margin-top:6px">Removes all data across all tables.</div>
+  </div>
+
 </div>
 
-<!-- Revenue chart + Tool trends -->
-<div class="section">
+<!-- RIGHT: Data panels -->
+<div style="padding:20px;display:flex;flex-direction:column;gap:20px;overflow-y:auto">
+
+  <!-- Revenue chart + Tool trends -->
   <div class="grid-2">
     <div>
       <div class="sec-head">Revenue — last 30 days</div>
       <div class="chart-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="font-size:11px;color:#444">ℏ per day</span>
+          <span style="font-size:11px;color:#4ade80" id="chart-total"></span>
+        </div>
         <div class="chart-bars" id="revenue-chart"></div>
       </div>
     </div>
@@ -480,10 +528,8 @@ function getDashboardHTML() {
       </div>
     </div>
   </div>
-</div>
 
-<!-- Tool ranking + Top spenders -->
-<div class="section">
+  <!-- Tool ranking + Top spenders -->
   <div class="grid-2">
     <div>
       <div class="sec-head">Tool Ranking — all time</div>
@@ -504,10 +550,8 @@ function getDashboardHTML() {
       </div>
     </div>
   </div>
-</div>
 
-<!-- Accounts + Recent transactions -->
-<div class="section">
+  <!-- Accounts + Recent transactions -->
   <div class="grid-2">
     <div>
       <div class="sec-head">Accounts</div>
@@ -528,47 +572,9 @@ function getDashboardHTML() {
       </div>
     </div>
   </div>
-</div>
 
-${hasXAgent ? `<!-- X Agent status -->
-<div class="section">
-  <div class="sec-head">X Agent</div>
-  <div class="grid-3">
-    <div class="card"><div class="card-label">Balance</div><div class="card-value" id="xa-balance">—</div><div class="card-sub">xagent-internal</div></div>
-    <div class="card"><div class="card-label">Calls (24h)</div><div class="card-value" id="xa-calls">—</div><div class="card-sub" id="xa-spent"></div></div>
-    <div class="card"><div class="card-label">Last Active</div><div class="card-value" style="font-size:16px" id="xa-last">—</div></div>
-  </div>
-</div>` : ''}
-
-<!-- Operational controls -->
-<div class="section">
-  <div class="sec-head">Controls</div>
-  <div class="grid-3">
-    <div class="card">
-      <div class="card-label" style="margin-bottom:10px">Provision / Top Up Account</div>
-      <input id="ctrl-key" placeholder="API key (e.g. 0.0.12345)" style="width:100%;background:#0a0a0a;border:1px solid #2a2a2a;color:#e0e0e0;padding:7px 9px;border-radius:6px;font-size:12px;margin-bottom:8px">
-      <input id="ctrl-hbar" placeholder="HBAR amount" type="number" style="width:100%;background:#0a0a0a;border:1px solid #2a2a2a;color:#e0e0e0;padding:7px 9px;border-radius:6px;font-size:12px;margin-bottom:10px">
-      <button class="btn green" style="width:100%" onclick="doProvision()">Provision / Top Up</button>
-      <div id="ctrl-result" style="font-size:11px;color:#4ade80;margin-top:8px;min-height:16px"></div>
-    </div>
-    <div class="card">
-      <div class="card-label" style="margin-bottom:10px">Platform Wallet</div>
-      <div class="qr-inline">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=64x64&data=${platformAccount}" width="64" height="64" alt="QR">
-        <div>
-          <div class="mono" style="color:#4ade80;font-size:12px">${platformAccount}</div>
-          <div style="font-size:11px;color:#444;margin-top:4px">Send HBAR to top up</div>
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-label" style="margin-bottom:10px">GDPR Delete Account</div>
-      <input id="del-key" placeholder="API key to delete" style="width:100%;background:#0a0a0a;border:1px solid #2a2a2a;color:#e0e0e0;padding:7px 9px;border-radius:6px;font-size:12px;margin-bottom:8px">
-      <button class="btn danger" style="width:100%" onclick="openDeleteModal()">Delete Account…</button>
-      <div style="font-size:10px;color:#444;margin-top:8px">Removes all rows from accounts, transactions, deposits &amp; consent_events.</div>
-    </div>
-  </div>
 </div>
+</div><!-- end main layout -->
 
 <div style="height:40px"></div>
 
@@ -644,14 +650,19 @@ async function loadAll() {
     // Revenue chart
     const rev = analytics.daily_revenue;
     const maxRev = Math.max(...rev.map(d => parseFloat(d.hbar)), 0.0001);
+    const totalRev = rev.reduce((s, d) => s + parseFloat(d.hbar), 0);
+    const chartTotal = document.getElementById('chart-total');
+    if (chartTotal) chartTotal.textContent = totalRev.toFixed(4) + ' ℏ total';
     document.getElementById('revenue-chart').innerHTML = rev.length === 0
       ? '<div style="color:#333;font-size:12px;align-self:center">No data yet</div>'
       : rev.map(d => {
-          const h = Math.max(4, Math.round((parseFloat(d.hbar) / maxRev) * 76));
-          const lbl = d.date.slice(5); // MM-DD
-          return \`<div class="chart-bar-col" title="\${d.date}: \${d.hbar} ℏ (\${d.calls} calls)">
-            <div class="b" style="height:\${h}px"></div>
-            <div class="lbl">\${lbl.replace('-','/')}</div>
+          const hbar = parseFloat(d.hbar);
+          const h = Math.max(4, Math.round((hbar / maxRev) * 76));
+          const lbl = d.date.slice(5).replace('-','/');
+          const amt = hbar > 0 ? (hbar < 0.01 ? hbar.toFixed(4) : hbar.toFixed(2)) : '0';
+          return \`<div class="chart-bar-col" title="\${d.date}\n\${d.hbar} ℏ · \${d.calls} calls">
+            <div class="b" style="height:\${h}px" data-amt="\${amt}"></div>
+            <div class="lbl">\${lbl}</div>
           </div>\`;
         }).join('');
 
