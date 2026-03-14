@@ -27,57 +27,85 @@ Built for agents that need to *reason* about Hedera, not just interact with it.
 
 ---
 
-## Autonomous Agent Example
+## Autonomous Agent Examples
 
-**[`examples/whale-alert-agent.mjs`](examples/whale-alert-agent.mjs)** — a production-ready autonomous agent that monitors any Hedera token for whale concentration, writes a tamper-proof alert to the Hedera blockchain when an anomaly is detected, and prints the on-chain proof link. Runs forever on a schedule. Zero dependencies beyond Node.js 18+.
+Four production-ready agents in [`examples/`](examples/). Clone the repo, fund once, run. Zero dependencies beyond Node.js 18+.
 
-**What it does:**
-- Calls `token_monitor` on your chosen token every hour
-- Detects when top-10 holders exceed a configurable concentration threshold
-- Writes a `whale_alert` record to HCS via `hcs_write_record` — permanently on-chain
-- Prints the [Hashscan](https://hashscan.io) proof URL so you can verify the alert independently
-
-**Setup — 5 minutes:**
+**One-time setup for all agents:**
 
 ```bash
-# 1. Clone the repo
 git clone https://github.com/mountainmystic/hederatoolbox.git
 cd hederatoolbox
 
-# 2. Send any amount of HBAR to the platform wallet from your Hedera account
-#    Your account ID becomes your API key automatically within 10 seconds.
-#    Platform wallet: 0.0.10309126
+# Send any HBAR to the platform wallet from your Hedera account.
+# Your account ID becomes your API key automatically within 10 seconds.
+# Platform wallet: 0.0.10309126
+```
 
-# 3. Run the agent — replace with your account ID and token
+---
+
+### 🐋 Whale Alert Monitor
+**[`examples/whale-alert-agent.mjs`](examples/whale-alert-agent.mjs)**
+
+Monitors any Hedera token for unusual whale concentration on a schedule. When top-10 holders exceed your threshold, writes a tamper-proof `whale_alert` record to HCS and prints the Hashscan proof URL.
+
+```bash
 HEDERA_ACCOUNT_ID=0.0.YOUR_ID TOKEN_ID=0.0.731861 node examples/whale-alert-agent.mjs
 ```
 
-**Or edit the config directly** at the top of the file:
+| Config | Default | Description |
+|--------|---------|-------------|
+| `TOKEN_ID` | `0.0.731861` | Token to monitor |
+| `THRESHOLD_PCT` | `80` | Alert if top-10 holders exceed this % |
+| `CHECK_INTERVAL_MS` | `3600000` | Check every hour |
 
-```js
-const API_KEY   = "0.0.YOUR_ACCOUNT_ID";  // your Hedera account ID
-const TOKEN_ID  = "0.0.731861";           // token to monitor (SAUCE by default)
-const THRESHOLD_PCT     = 80;             // alert if top-10 holders exceed this %
-const CHECK_INTERVAL_MS = 3600000;        // check every hour (in milliseconds)
+**Cost:** `0.2 ℏ` per check · `5 ℏ` only when anomaly fires
+
+---
+
+### ✅ Compliance Onboarding
+**[`examples/compliance-onboarding-agent.mjs`](examples/compliance-onboarding-agent.mjs)**
+
+Screens a Hedera account before doing business with them. Runs identity resolution, sanctions screening, and optional KYC verification in sequence — then writes a tamper-proof compliance record to HCS. Returns `APPROVED`, `REJECTED`, `PENDING_REVIEW`, or `PENDING_KYC`.
+
+```bash
+HEDERA_ACCOUNT_ID=0.0.YOUR_ID SUBJECT=0.0.999999 node examples/compliance-onboarding-agent.mjs
+
+# With KYC check for your token:
+HEDERA_ACCOUNT_ID=0.0.YOUR_ID SUBJECT=0.0.999999 KYC_TOKEN_ID=0.0.731861 node examples/compliance-onboarding-agent.mjs
 ```
 
-**Cost:** `0.2 ℏ` per check · `5 ℏ` only when an anomaly fires · `10 ℏ` covers ~2 days of monitoring
+**Cost:** `~1.7 ℏ` per screening · add `0.5 ℏ` for KYC check
 
-**Example output when an anomaly is detected:**
+---
 
-```
-==============================================================
- 🚨 WHALE ALERT — SAUCE (0.0.731861)
- Top-10 concentration: 84.3%  (threshold: 80%)
-   ⚠  HIGH CONCENTRATION - Top 10 holders control 84.3% of supply
- HCS Record ID:  a3f2c1d4-...
- Transaction ID: 0.0.10309126@1741234567.000000000
- On-chain proof: https://hashscan.io/mainnet/transaction/0.0.10309126@1741234567.000000000
- Balance after:  4.8000 ℏ
-==============================================================
+### 🔍 Token Due Diligence
+**[`examples/token-due-diligence-agent.mjs`](examples/token-due-diligence-agent.mjs)**
+
+Full investment and listing due diligence on any Hedera token in one run. Pulls price data, deep holder analysis, admin key risks, and treasury account identity — outputs a structured risk report with an overall verdict.
+
+```bash
+HEDERA_ACCOUNT_ID=0.0.YOUR_ID TOKEN_ID=0.0.731861 node examples/token-due-diligence-agent.mjs
 ```
 
-Fork it, swap the token ID, and you have a live on-chain monitoring agent in under 5 minutes.
+**Cost:** `~1.0 ℏ` per report (token_price + token_analyze + identity_resolve on treasury)
+
+---
+
+### 🗳️ DAO Governance Monitor
+**[`examples/dao-monitor-agent.mjs`](examples/dao-monitor-agent.mjs)**
+
+Watches active governance proposals for a Hedera token on a schedule. Alerts when a proposal is closing within 24 hours. Pass `--analyze` with a `PROPOSAL_ID` for deep vote tally and outcome prediction.
+
+```bash
+# Monitor proposals
+HEDERA_ACCOUNT_ID=0.0.YOUR_ID TOKEN_ID=0.0.731861 node examples/dao-monitor-agent.mjs
+
+# Deep-analyze a specific proposal (requires HCS topic)
+HEDERA_ACCOUNT_ID=0.0.YOUR_ID TOKEN_ID=0.0.731861 TOPIC_ID=0.0.999 PROPOSAL_ID=42 node examples/dao-monitor-agent.mjs --analyze
+```
+
+**Cost:** `0.2 ℏ` per check · `1.0 ℏ` for deep analysis · `10 ℏ` covers ~12 days at 4 checks/day
 
 ---
 
