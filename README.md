@@ -303,4 +303,18 @@ Enterprise licensing and SLA inquiries: open an issue titled `[Enterprise]`.
 
 [hederatoolbox.com](https://hederatoolbox.com)
 
+---
+
+## On-Chain Identity
+
+HederaToolbox has a permanent platform identity record written to Hedera mainnet.
+
+| Field | Value |
+|---|---|
+| HCS Topic | `0.0.10353855` |
+| Record ID | `c420c3b9-408e-4f87-a9e1-1dcbb54facfa` |
+| Transaction | `0.0.10309126@1773623419.733217779` |
+| Written | 16 March 2026 |
+| Verify | [hashscan.io/mainnet/topic/0.0.10353855](https://hashscan.io/mainnet/topic/0.0.10353855) |
+
 
