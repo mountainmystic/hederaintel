@@ -42,7 +42,9 @@
     "smart-contract",
     "identity",
     "compliance",
-    "governance"
+    "governance",
+    "openclaw",
+    "clawhub"
   ],
   "author": "mountainmystic",
   "license": "Proprietary",
