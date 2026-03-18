@@ -23,7 +23,8 @@
       "Redistribute or resell API access to third parties without written agreement",
       "Use the service to facilitate illegal transactions or sanctions evasion",
       "Attempt to bypass consent or credit check mechanisms",
-      "Conduct denial-of-service attacks or intentional abuse of free endpoints"
+      "Conduct denial-of-service attacks or intentional abuse of free endpoints",
+      "Use the service for automated high-frequency polling of token, price, or market data for trading, arbitrage, or resale purposes, including passing data to third-party trading systems"
     ]
   },
   "pricing": {
