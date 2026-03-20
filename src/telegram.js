@@ -104,17 +104,22 @@ Claude Desktop (claude_desktop_config.json under mcpServers):
 }
 Then restart Claude Desktop.
 
+Manus:
+Settings → Connectors → Add MCP connector → paste:
+https://api.hederatoolbox.com/mcp
+No API key required — your Hedera account ID is your credential.
+
 Cursor or any MCP-compatible client:
 Use the endpoint URL directly: https://api.hederatoolbox.com/mcp
 
 TOOLS AND COSTS
 Free: account_info, get_terms, confirm_terms
-HCS: hcs_monitor (0.05 ℏ), hcs_query (0.05 ℏ), hcs_understand (0.50 ℏ)
-Compliance: hcs_write_record (2.00 ℏ), hcs_verify_record (0.50 ℏ), hcs_audit_trail (1.00 ℏ)
-Identity: identity_resolve (0.10 ℏ), identity_verify_kyc (0.20 ℏ), identity_check_sanctions (0.50 ℏ)
-Token: token_price (0.05 ℏ), token_monitor (0.10 ℏ), token_analyze (0.30 ℏ)
-Governance: governance_monitor (0.10 ℏ), governance_analyze (0.50 ℏ)
-Contract: contract_read (0.10 ℏ), contract_call (0.50 ℏ), contract_analyze (1.00 ℏ)
+HCS: hcs_monitor (0.10 ℏ), hcs_query (0.10 ℏ), hcs_understand (1.00 ℏ)
+Compliance: hcs_write_record (5.00 ℏ), hcs_verify_record (1.00 ℏ), hcs_audit_trail (2.00 ℏ)
+Identity: identity_resolve (0.20 ℏ), identity_verify_kyc (0.50 ℏ), identity_check_sanctions (1.00 ℏ)
+Token: token_price (0.10 ℏ), token_monitor (0.20 ℏ), token_analyze (0.60 ℏ)
+Governance: governance_monitor (0.20 ℏ), governance_analyze (1.00 ℏ)
+Contract: contract_read (0.20 ℏ), contract_call (1.00 ℏ), contract_analyze (1.50 ℏ)
 
 MCP ENDPOINT
 https://api.hederatoolbox.com/mcp
@@ -197,8 +202,8 @@ function getHistory(chatId) {
 function addToHistory(chatId, role, content) {
   const history = getHistory(chatId);
   history.push({ role, content });
-  // Keep last 10 exchanges (20 messages)
-  if (history.length > 20) history.splice(0, history.length - 20);
+  // Keep last 5 exchanges (10 messages) — intentionally resets on redeploy
+  if (history.length > 10) history.splice(0, history.length - 10);
   conversationHistory.set(chatId, history);
 }
 
