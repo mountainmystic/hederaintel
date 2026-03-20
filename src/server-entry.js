@@ -58,13 +58,11 @@ const port = process.env.PORT || 3000;
 const startTime = Date.now();
 
 // ── Rate limiter for free endpoints ──────────────────────────────────────────
-// Simple in-memory store: ip -> { count, windowStart }
 // SQLite-backed — survives restarts. Logic in db.js checkRateLimit().
 
 const httpServer = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
 
-  // Wrap entire handler to catch 413 from readBody()
   req.on("error", (e) => {
     if (!res.headersSent) json(res, 413, { error: "Request body too large. Maximum size is 1MB." });
   });
@@ -87,12 +85,10 @@ const httpServer = http.createServer(async (req, res) => {
     });
   }
 
-  // Public terms endpoint — agents and browsers can fetch this directly
   if (req.method === "GET" && url.pathname === "/terms") {
     return json(res, 200, TERMS);
   }
 
-  // Rate limit free MCP onboarding endpoints
   if (["get_terms", "confirm_terms", "account_info"].some(t => url.pathname.includes(t))) {
     const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() || req.socket.remoteAddress;
     if (checkRateLimit(ip)) {
@@ -100,7 +96,6 @@ const httpServer = http.createServer(async (req, res) => {
     }
   }
 
-  // Serve static files from /public (e.g. /public/terms.json)
   if (req.method === "GET" && url.pathname.startsWith("/public/")) {
     const filename = url.pathname.replace("/public/", "");
     const staticPath = path.join(__dirname, "../public", filename);
@@ -115,7 +110,6 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
-  // Telegram webhook — Telegram POSTs incoming messages here
   if (req.method === "POST" && url.pathname === "/telegram/webhook") {
     try {
       const body = JSON.parse(await readBody(req));
@@ -123,7 +117,6 @@ const httpServer = http.createServer(async (req, res) => {
     } catch (e) {
       console.error("[Telegram] Webhook parse error:", e.message);
     }
-    // Always respond 200 immediately — Telegram will retry if we don't
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end('{"ok":true}');
     return;
@@ -176,16 +169,11 @@ const httpServer = http.createServer(async (req, res) => {
     const { db } = await import("./db.js");
     const toolRanking = db.prepare(`
       SELECT tool_name, COUNT(*) as call_count, SUM(amount_tinybars) as total_tinybars
-      FROM transactions
-      GROUP BY tool_name
-      ORDER BY call_count DESC
+      FROM transactions GROUP BY tool_name ORDER BY call_count DESC
     `).all();
     const dailyVolume = db.prepare(`
       SELECT DATE(timestamp) as date, COUNT(*) as calls, SUM(amount_tinybars) as tinybars
-      FROM transactions
-      GROUP BY DATE(timestamp)
-      ORDER BY date DESC
-      LIMIT 30
+      FROM transactions GROUP BY DATE(timestamp) ORDER BY date DESC LIMIT 30
     `).all();
     const totalCalls = db.prepare(`SELECT COUNT(*) as n FROM transactions`).get();
     const totalAccounts = db.prepare(`SELECT COUNT(*) as n FROM accounts`).get();
@@ -216,28 +204,41 @@ const httpServer = http.createServer(async (req, res) => {
     });
   }
 
-  // Analytics endpoint — revenue chart, top spenders, tool trends, monthly comparison
+  // Analytics endpoint — period-aware revenue, tool trends, top spenders, monthly comparison
   if (req.method === "GET" && url.pathname === "/admin/analytics") {
     if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
     const { db } = await import("./db.js");
 
-    const dailyRevenue = db.prepare(`
-      SELECT DATE(timestamp) as date, COUNT(*) as calls, SUM(amount_tinybars) as tinybars
-      FROM transactions
-      WHERE timestamp >= datetime('now', '-30 days')
-      GROUP BY DATE(timestamp)
-      ORDER BY date ASC
-    `).all();
+    // Period-aware revenue query: daily (30d), weekly (24w), monthly (12m)
+    const period = url.searchParams.get('period') || 'daily';
+    let revenueRows;
+    if (period === 'weekly') {
+      revenueRows = db.prepare(`
+        SELECT strftime('%Y-W%W', timestamp) as date, COUNT(*) as calls, SUM(amount_tinybars) as tinybars
+        FROM transactions WHERE timestamp >= datetime('now', '-84 days')
+        GROUP BY strftime('%Y-W%W', timestamp) ORDER BY date ASC
+      `).all();
+    } else if (period === 'monthly') {
+      revenueRows = db.prepare(`
+        SELECT strftime('%Y-%m', timestamp) as date, COUNT(*) as calls, SUM(amount_tinybars) as tinybars
+        FROM transactions WHERE timestamp >= datetime('now', '-365 days')
+        GROUP BY strftime('%Y-%m', timestamp) ORDER BY date ASC
+      `).all();
+    } else {
+      revenueRows = db.prepare(`
+        SELECT DATE(timestamp) as date, COUNT(*) as calls, SUM(amount_tinybars) as tinybars
+        FROM transactions WHERE timestamp >= datetime('now', '-30 days')
+        GROUP BY DATE(timestamp) ORDER BY date ASC
+      `).all();
+    }
 
     const thisMonth = db.prepare(`
       SELECT COUNT(*) as calls, COALESCE(SUM(amount_tinybars),0) as tinybars
-      FROM transactions
-      WHERE strftime('%Y-%m', timestamp) = strftime('%Y-%m', 'now')
+      FROM transactions WHERE strftime('%Y-%m', timestamp) = strftime('%Y-%m', 'now')
     `).get();
     const lastMonth = db.prepare(`
       SELECT COUNT(*) as calls, COALESCE(SUM(amount_tinybars),0) as tinybars
-      FROM transactions
-      WHERE strftime('%Y-%m', timestamp) = strftime('%Y-%m', datetime('now', '-1 month'))
+      FROM transactions WHERE strftime('%Y-%m', timestamp) = strftime('%Y-%m', datetime('now', '-1 month'))
     `).get();
 
     const topSpenders = db.prepare(`
@@ -283,7 +284,8 @@ const httpServer = http.createServer(async (req, res) => {
     }
 
     return json(res, 200, {
-      daily_revenue: dailyRevenue.map(d => ({ date: d.date, calls: d.calls, hbar: (d.tinybars / 100_000_000).toFixed(4) })),
+      period,
+      daily_revenue: revenueRows.map(d => ({ date: d.date, calls: d.calls, hbar: (d.tinybars / 100_000_000).toFixed(4) })),
       monthly: {
         this_month: { calls: thisMonth.calls, hbar: (thisMonth.tinybars / 100_000_000).toFixed(4) },
         last_month: { calls: lastMonth.calls, hbar: (lastMonth.tinybars / 100_000_000).toFixed(4) },
@@ -297,7 +299,7 @@ const httpServer = http.createServer(async (req, res) => {
     });
   }
 
-  // GDPR delete — removes all rows for a given api_key
+  // GDPR delete
   if (req.method === "DELETE" && url.pathname === "/admin/delete-account") {
     if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
     try {
@@ -323,14 +325,11 @@ const httpServer = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && url.pathname === "/admin/dashboard") {
-    // Serve HTML unconditionally — the page JS prompts for the secret
-    // and sends it as x-admin-secret header on all subsequent API calls.
     res.writeHead(200, { "Content-Type": "text/html" });
     res.end(getDashboardHTML());
     return;
   }
 
-  // SQLite backup endpoint — protected by BACKUP_SECRET (separate from ADMIN_SECRET)
   if (req.method === "GET" && url.pathname === "/admin/backup") {
     const backupSecret = process.env.BACKUP_SECRET;
     if (!backupSecret || req.headers["x-backup-secret"] !== backupSecret) {
@@ -358,7 +357,6 @@ const httpServer = http.createServer(async (req, res) => {
 function getDashboardHTML() {
   const platformAccount = process.env.HEDERA_ACCOUNT_ID || "";
   const hasXAgent = !!process.env.XAGENT_API_KEY;
-  // Note: secret is NOT embedded in HTML — dashboard uses prompt set at login
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -368,12 +366,9 @@ function getDashboardHTML() {
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; min-height: 100vh; }
-
-  /* ── Header ── */
   header { background: #111; border-bottom: 1px solid #222; padding: 12px 16px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 50; }
   header h1 { font-size: 16px; font-weight: 600; color: #fff; }
   .badge { background: #1a3a2a; color: #4ade80; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid #2a5a3a; }
-  .badge.amber { background: #2a2000; color: #fbbf24; border-color: #4a3a00; }
   #last-updated { font-size: 11px; color: #444; margin-left: auto; }
   .btn { background: #1a1a1a; border: 1px solid #333; color: #888; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; }
   .btn:hover { color: #fff; border-color: #555; }
@@ -381,58 +376,29 @@ function getDashboardHTML() {
   .btn.danger:hover { background: #2a0a0a; border-color: #ef4444; }
   .btn.green { border-color: #1a4a2a; color: #4ade80; }
   .btn.green:hover { background: #0a2a1a; }
-
-  /* ── Hamburger (mobile only) ── */
   #menu-btn { display: none; background: none; border: 1px solid #333; color: #888; padding: 5px 9px; border-radius: 6px; font-size: 16px; cursor: pointer; line-height: 1; }
-
-  /* ── Layout ── */
   #layout { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 49px); }
-
-  /* ── Sidebar ── */
-  #sidebar {
-    border-right: 1px solid #1a1a1a;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow-y: auto;
-  }
-
-  /* ── Main panel ── */
+  #sidebar { border-right: 1px solid #1a1a1a; padding: 14px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
   #main { padding: 14px; overflow-y: auto; }
-
-  /* ── Cards ── */
   .card { background: #111; border: 1px solid #1e1e1e; border-radius: 8px; padding: 12px; }
   .card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #555; margin-bottom: 6px; }
   .card-value { font-size: 26px; font-weight: 700; color: #fff; line-height: 1; }
   .card-sub { font-size: 11px; color: #444; margin-top: 5px; }
   .card-sub.up { color: #4ade80; } .card-sub.down { color: #f87171; }
-
-  /* ── Section header ── */
   .sec-head { font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-
-  /* ── Tables ── */
   .tbl { width: 100%; border-collapse: collapse; background: #111; border: 1px solid #1e1e1e; border-radius: 10px; overflow: hidden; }
   .tbl th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #444; padding: 9px 12px; border-bottom: 1px solid #1a1a1a; }
   .tbl td { padding: 8px 12px; font-size: 12px; border-bottom: 1px solid #161616; }
   .tbl tr:last-child td { border-bottom: none; }
   .tbl-scroll { max-height: 220px; overflow-y: auto; border: 1px solid #1e1e1e; border-radius: 10px; }
   .tbl-scroll table { border: none; border-radius: 0; }
-
-  /* ── Bar ── */
   .bar-wrap { background: #1a1a1a; border-radius: 3px; height: 4px; width: 80px; }
   .bar { background: #4ade80; height: 4px; border-radius: 3px; }
-
-  /* ── Chart ── */
   .chart-wrap { background: #111; border: 1px solid #1e1e1e; border-radius: 10px; padding: 16px; }
-
-  /* ── Watcher dot ── */
   .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 5px #4ade80; display: inline-block; }
   .dot.amber { background: #fbbf24; box-shadow: 0 0 5px #fbbf24; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .dot { animation: pulse 2s infinite; }
-
-  /* ── Misc ── */
   .mono { font-family: monospace; font-size: 11px; }
   .trend { font-size: 10px; padding: 1px 5px; border-radius: 4px; }
   .trend.up { background: #0a2a1a; color: #4ade80; }
@@ -442,8 +408,6 @@ function getDashboardHTML() {
   .qr-inline img { border-radius: 6px; background: #fff; padding: 4px; flex-shrink: 0; }
   input.ctrl { width: 100%; background: #0a0a0a; border: 1px solid #2a2a2a; color: #e0e0e0; padding: 7px 9px; border-radius: 6px; font-size: 12px; margin-bottom: 8px; }
   input.ctrl:focus { outline: none; border-color: #4ade80; }
-
-  /* ── Modal ── */
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
   .modal-bg.open { display: flex; }
   .modal { background: #161616; border: 1px solid #2a2a2a; border-radius: 12px; padding: 24px; width: 360px; max-width: 90vw; }
@@ -451,44 +415,27 @@ function getDashboardHTML() {
   .modal input { width: 100%; background: #0a0a0a; border: 1px solid #2a2a2a; color: #e0e0e0; padding: 8px 10px; border-radius: 6px; font-size: 13px; margin-bottom: 10px; }
   .modal input:focus { outline: none; border-color: #4ade80; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
-
-  /* ── Drag-and-drop panels ── */
+  /* Period toggle */
+  .period-btn { background: #1a1a1a; border: 1px solid #2a2a2a; color: #555; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; }
+  .period-btn:hover { color: #888; border-color: #444; }
+  .period-btn.active { background: #0a2a1a; border-color: #2a5a3a; color: #4ade80; }
+  /* Health strip responsive */
+  @media (max-width: 700px) { #health-strip { grid-template-columns: 1fr 1fr !important; } }
+  @media (max-width: 400px) { #health-strip { grid-template-columns: 1fr !important; } }
+  /* Drag-and-drop panels */
   .panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .panel {
-    border: 1px solid #1e1e1e;
-    border-radius: 10px;
-    background: #111;
-    padding: 14px;
-    cursor: grab;
-    transition: opacity 0.2s, border-color 0.2s;
-    min-width: 0;
-  }
+  .panel { border: 1px solid #1e1e1e; border-radius: 10px; background: #111; padding: 14px; cursor: grab; transition: opacity 0.2s, border-color 0.2s; min-width: 0; }
   .panel:active { cursor: grabbing; }
   .panel.dragging { opacity: 0.4; border-color: #4ade80; }
   .panel.drag-over { border-color: #4ade80; border-style: dashed; }
   .panel-handle { font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; user-select: none; }
   .panel-handle::before { content: "⠿"; color: #333; font-size: 14px; }
   .panel-full { grid-column: 1 / -1; }
-
-  /* ── Mobile sidebar overlay ── */
   #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 40; }
-
-  /* ── Responsive breakpoints ── */
   @media (max-width: 900px) {
     #menu-btn { display: block; }
     #layout { grid-template-columns: 1fr; }
-    #sidebar {
-      position: fixed;
-      top: 49px;
-      left: 0;
-      bottom: 0;
-      width: 280px;
-      z-index: 45;
-      background: #0f0f0f;
-      transform: translateX(-100%);
-      transition: transform 0.25s ease;
-      border-right: 1px solid #2a2a2a;
-    }
+    #sidebar { position: fixed; top: 49px; left: 0; bottom: 0; width: 280px; z-index: 45; background: #0f0f0f; transform: translateX(-100%); transition: transform 0.25s ease; border-right: 1px solid #2a2a2a; }
     #sidebar.open { transform: translateX(0); }
     #sidebar-overlay.open { display: block; }
     .panel-grid { grid-template-columns: 1fr; }
@@ -517,25 +464,20 @@ function getDashboardHTML() {
 
 <div id="layout">
 
-<!-- ── Sidebar ── -->
 <div id="sidebar">
-
-  <!-- KPIs -->
   <div class="card"><div class="card-label">Total Calls</div><div class="card-value" id="kpi-calls">—</div></div>
   <div class="card"><div class="card-label">Accounts</div><div class="card-value" id="kpi-accounts">—</div><div class="card-sub" id="kpi-avg-calls"></div></div>
   <div class="card"><div class="card-label">Total Deposited</div><div class="card-value" id="kpi-deposited">—</div><div class="card-sub">ℏ received</div></div>
   <div class="card"><div class="card-label">This Month</div><div class="card-value" id="kpi-month-hbar">—</div><div class="card-sub" id="kpi-month-delta"></div></div>
   <div class="card"><div class="card-label">Rate Limit Hits</div><div class="card-value" id="kpi-ratelimit">—</div><div class="card-sub">last 24h</div></div>
 
-  ${hasXAgent ? `<!-- X Agent -->
-  <div style="border-top:1px solid #1a1a1a;padding-top:10px">
+  ${hasXAgent ? `<div style="border-top:1px solid #1a1a1a;padding-top:10px">
     <div class="sec-head">X Agent</div>
     <div class="card" style="margin-bottom:8px"><div class="card-label">Balance</div><div class="card-value" id="xa-balance">—</div><div class="card-sub">xagent-internal</div></div>
     <div class="card" style="margin-bottom:8px"><div class="card-label">Calls (24h)</div><div class="card-value" id="xa-calls">—</div><div class="card-sub" id="xa-spent"></div></div>
     <div class="card"><div class="card-label">Last Active</div><div class="card-value" style="font-size:15px" id="xa-last">—</div></div>
   </div>` : ''}
 
-  <!-- Provision -->
   <div style="border-top:1px solid #1a1a1a;padding-top:10px">
     <div class="sec-head">Provision / Top Up</div>
     <div style="font-size:11px;color:#444;margin-bottom:8px">Add balance to any account key.</div>
@@ -545,7 +487,6 @@ function getDashboardHTML() {
     <div id="ctrl-result" style="font-size:11px;color:#4ade80;margin-top:8px;min-height:16px"></div>
   </div>
 
-  <!-- Platform wallet -->
   <div style="border-top:1px solid #1a1a1a;padding-top:10px">
     <div class="sec-head">Platform Wallet</div>
     <div class="qr-inline">
@@ -557,26 +498,55 @@ function getDashboardHTML() {
     </div>
   </div>
 
-  <!-- GDPR delete -->
   <div style="border-top:1px solid #1a1a1a;padding-top:10px">
     <div class="sec-head">GDPR Delete Account</div>
     <input id="del-key" class="ctrl" placeholder="API key to delete">
     <button class="btn danger" style="width:100%" onclick="openDeleteModal()">Delete Account…</button>
     <div style="font-size:10px;color:#333;margin-top:6px">Removes all data across all tables.</div>
   </div>
+</div>
 
-</div><!-- end sidebar -->
-
-<!-- ── Main ── -->
 <div id="main">
+
+  <!-- Health strip -->
+  <div id="health-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+    <div class="card" style="padding:10px">
+      <div class="card-label">Watcher</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+        <span class="dot" id="h-watcher-dot"></span>
+        <span id="h-watcher-status" style="font-size:13px;font-weight:600;color:#fff">—</span>
+      </div>
+    </div>
+    <div class="card" style="padding:10px">
+      <div class="card-label">Last Tool Call</div>
+      <div id="h-last-call" style="font-size:13px;font-weight:600;color:#fff;margin-top:4px">—</div>
+    </div>
+    <div class="card" style="padding:10px">
+      <div class="card-label">Avg Revenue/Day</div>
+      <div id="h-avg-day" style="font-size:13px;font-weight:600;color:#4ade80;margin-top:4px">—</div>
+    </div>
+    <div class="card" style="padding:10px">
+      <div class="card-label">Active Accounts</div>
+      <div id="h-active-accounts" style="font-size:13px;font-weight:600;color:#fff;margin-top:4px">—</div>
+      <div style="font-size:10px;color:#444;margin-top:2px">with balance</div>
+    </div>
+  </div>
+
   <div class="panel-grid" id="panel-grid">
 
-    <!-- Panel: Revenue chart -->
+    <!-- Revenue chart with period toggle -->
     <div class="panel panel-full" data-panel="revenue" draggable="true">
-      <div class="panel-handle">Revenue — last 30 days</div>
+      <div class="panel-handle" style="justify-content:space-between">
+        <span>Revenue</span>
+        <div style="display:flex;gap:4px">
+          <button class="period-btn active" data-period="daily" onclick="setPeriod('daily')">Daily</button>
+          <button class="period-btn" data-period="weekly" onclick="setPeriod('weekly')">Weekly</button>
+          <button class="period-btn" data-period="monthly" onclick="setPeriod('monthly')">Monthly</button>
+        </div>
+      </div>
       <div class="chart-wrap">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
-          <span style="font-size:11px;color:#444">ℏ per day (hover for amount)</span>
+          <span style="font-size:11px;color:#444" id="chart-period-label">ℏ per day · last 30 days</span>
           <span style="font-size:11px;color:#4ade80" id="chart-total"></span>
         </div>
         <svg id="revenue-chart" width="100%" height="80" style="display:block;overflow:visible"></svg>
@@ -584,7 +554,20 @@ function getDashboardHTML() {
       </div>
     </div>
 
-    <!-- Panel: Tool trends -->
+    <!-- New accounts chart -->
+    <div class="panel panel-full" data-panel="newaccounts" draggable="true">
+      <div class="panel-handle">New Accounts — last 30 days</div>
+      <div class="chart-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <span style="font-size:11px;color:#444">signups per day</span>
+          <span style="font-size:11px;color:#4ade80" id="acct-chart-total"></span>
+        </div>
+        <svg id="acct-chart" width="100%" height="60" style="display:block;overflow:visible"></svg>
+        <div id="acct-hover-label" style="font-size:11px;color:#4ade80;margin-top:6px;min-height:14px;text-align:center"></div>
+      </div>
+    </div>
+
+    <!-- Tool trends -->
     <div class="panel" data-panel="trends" draggable="true">
       <div class="panel-handle">Tool Trends — 7d vs prev 7d</div>
       <div class="tbl-scroll">
@@ -595,7 +578,7 @@ function getDashboardHTML() {
       </div>
     </div>
 
-    <!-- Panel: Tool ranking -->
+    <!-- Tool ranking -->
     <div class="panel" data-panel="ranking" draggable="true">
       <div class="panel-handle">Tool Ranking — all time</div>
       <div class="tbl-scroll">
@@ -606,7 +589,7 @@ function getDashboardHTML() {
       </div>
     </div>
 
-    <!-- Panel: Top spenders -->
+    <!-- Top spenders -->
     <div class="panel" data-panel="spenders" draggable="true">
       <div class="panel-handle">Top Spenders</div>
       <div class="tbl-scroll">
@@ -617,7 +600,7 @@ function getDashboardHTML() {
       </div>
     </div>
 
-    <!-- Panel: Accounts -->
+    <!-- Accounts -->
     <div class="panel" data-panel="accounts" draggable="true">
       <div class="panel-handle">Accounts</div>
       <div class="tbl-scroll">
@@ -628,7 +611,7 @@ function getDashboardHTML() {
       </div>
     </div>
 
-    <!-- Panel: Recent transactions -->
+    <!-- Recent transactions -->
     <div class="panel" data-panel="txs" draggable="true">
       <div class="panel-handle">Recent Transactions</div>
       <div class="tbl-scroll">
@@ -639,11 +622,10 @@ function getDashboardHTML() {
       </div>
     </div>
 
-  </div><!-- end panel-grid -->
-</div><!-- end main -->
-</div><!-- end layout -->
+  </div>
+</div>
+</div>
 
-<!-- Delete confirmation modal -->
 <div class="modal-bg" id="delete-modal">
   <div class="modal">
     <h3>⚠️ Confirm Account Deletion</h3>
@@ -658,7 +640,6 @@ function getDashboardHTML() {
 </div>
 
 <script>
-// ── Auth ──
 const SECRET = sessionStorage.getItem('hederatoolbox_admin_secret') || '';
 if (!SECRET) {
   const input = prompt('Admin secret:');
@@ -672,21 +653,17 @@ async function fetchJSON(path, opts = {}) {
   return r.json();
 }
 
-// ── Mobile sidebar toggle ──
 function toggleSidebar() {
-  const s = document.getElementById('sidebar');
-  const o = document.getElementById('sidebar-overlay');
-  s.classList.toggle('open');
-  o.classList.toggle('open');
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
 }
 
-// ── Drag-and-drop panel reordering ──
+// ── Drag-and-drop ──
 const PANEL_ORDER_KEY = 'htb_panel_order';
 let dragSrc = null;
 
 function savePanelOrder() {
-  const grid = document.getElementById('panel-grid');
-  const order = [...grid.children].map(p => p.dataset.panel);
+  const order = [...document.getElementById('panel-grid').children].map(p => p.dataset.panel);
   localStorage.setItem(PANEL_ORDER_KEY, JSON.stringify(order));
 }
 
@@ -701,40 +678,14 @@ function restorePanelOrder() {
 }
 
 function initDragDrop() {
-  const grid = document.getElementById('panel-grid');
-  grid.querySelectorAll('.panel').forEach(panel => {
-    panel.addEventListener('dragstart', e => {
-      dragSrc = panel;
-      panel.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-    panel.addEventListener('dragend', () => {
-      panel.classList.remove('dragging');
-      grid.querySelectorAll('.panel').forEach(p => p.classList.remove('drag-over'));
-      savePanelOrder();
-    });
-    panel.addEventListener('dragover', e => {
-      e.preventDefault();
-      if (dragSrc && dragSrc !== panel) {
-        grid.querySelectorAll('.panel').forEach(p => p.classList.remove('drag-over'));
-        panel.classList.add('drag-over');
-      }
-    });
-    panel.addEventListener('drop', e => {
-      e.preventDefault();
-      if (dragSrc && dragSrc !== panel) {
-        const allPanels = [...grid.children];
-        const srcIdx = allPanels.indexOf(dragSrc);
-        const tgtIdx = allPanels.indexOf(panel);
-        if (srcIdx < tgtIdx) grid.insertBefore(dragSrc, panel.nextSibling);
-        else grid.insertBefore(dragSrc, panel);
-        panel.classList.remove('drag-over');
-      }
-    });
+  document.getElementById('panel-grid').querySelectorAll('.panel').forEach(panel => {
+    panel.addEventListener('dragstart', e => { dragSrc = panel; panel.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    panel.addEventListener('dragend', () => { panel.classList.remove('dragging'); document.querySelectorAll('.panel').forEach(p => p.classList.remove('drag-over')); savePanelOrder(); });
+    panel.addEventListener('dragover', e => { e.preventDefault(); if (dragSrc && dragSrc !== panel) { document.querySelectorAll('.panel').forEach(p => p.classList.remove('drag-over')); panel.classList.add('drag-over'); } });
+    panel.addEventListener('drop', e => { e.preventDefault(); if (dragSrc && dragSrc !== panel) { const all = [...document.getElementById('panel-grid').children]; if (all.indexOf(dragSrc) < all.indexOf(panel)) document.getElementById('panel-grid').insertBefore(dragSrc, panel.nextSibling); else document.getElementById('panel-grid').insertBefore(dragSrc, panel); panel.classList.remove('drag-over'); } });
   });
 }
 
-// ── Helpers ──
 function timeAgo(ts) {
   if (!ts) return '—';
   const d = (Date.now() - new Date(ts).getTime()) / 1000;
@@ -750,146 +701,124 @@ function pct(a, b) {
   return (p > 0 ? '+' : '') + p + '%';
 }
 
-// ── Data loader ──
+// ── Period toggle ──
+let activePeriod = localStorage.getItem('htb_chart_period') || 'daily';
+const PERIOD_LABELS = { daily: 'ℏ per day · last 30 days', weekly: 'ℏ per week · last 12 weeks', monthly: 'ℏ per month · last 12 months' };
+
+function setPeriod(p) {
+  activePeriod = p;
+  localStorage.setItem('htb_chart_period', p);
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === p));
+  document.getElementById('chart-period-label').textContent = PERIOD_LABELS[p];
+  fetchJSON('/admin/analytics?period=' + p).then(a => { renderRevenueChart(a.daily_revenue); updateAnalyticsPanels(a); }).catch(console.error);
+}
+
+function renderRevenueChart(rev) {
+  const totalRev = rev.reduce((s, d) => s + parseFloat(d.hbar), 0);
+  document.getElementById('chart-total').textContent = totalRev.toFixed(4) + ' ℏ total';
+  const svgEl = document.getElementById('revenue-chart');
+  if (rev.length === 0) { svgEl.innerHTML = '<text x="50%" y="50%" fill="#333" font-size="12" text-anchor="middle" dominant-baseline="middle">No data yet</text>'; return; }
+  const W = svgEl.parentElement.clientWidth - 32 || 300, H = 80, pad = { top: 6, bottom: 16, left: 2, right: 2 };
+  svgEl.setAttribute('viewBox', \`0 0 \${W} \${H}\`);
+  const vals = rev.map(d => parseFloat(d.hbar)), maxV = Math.max(...vals, 0.0001);
+  const xStep = (W - pad.left - pad.right) / Math.max(vals.length - 1, 1);
+  const yScale = v => pad.top + (1 - v / maxV) * (H - pad.top - pad.bottom);
+  const pts = vals.map((v, i) => [pad.left + i * xStep, yScale(v)]);
+  const areaPath = \`M\${pts[0][0]},\${H - pad.bottom} \` + pts.map(([x,y]) => \`L\${x.toFixed(1)},\${y.toFixed(1)}\`).join(' ') + \` L\${pts[pts.length-1][0]},\${H - pad.bottom} Z\`;
+  const linePath = pts.map(([x,y],i) => \`\${i===0?'M':'L'}\${x.toFixed(1)},\${y.toFixed(1)}\`).join(' ');
+  const li = [0, Math.floor(rev.length/2), rev.length-1];
+  const labels = li.map(i => \`<text x="\${pts[i][0].toFixed(1)}" y="\${H}" fill="#333" font-size="8" text-anchor="middle">\${rev[i].date.slice(0,7).replace('-','/')}</text>\`).join('');
+  const dots = pts.map(([x,y],i) => { const d = rev[i], amt = parseFloat(d.hbar); const tip = \`\${d.date}: \${amt>0?(amt<0.01?amt.toFixed(4):amt.toFixed(2)):'0'} ℏ · \${d.calls} calls\`; return \`<circle cx="\${x.toFixed(1)}" cy="\${y.toFixed(1)}" r="3" fill="#4ade80" opacity="0" onmouseenter="this.style.opacity=1;document.getElementById('chart-hover-label').textContent='\${tip}'" onmouseleave="this.style.opacity=0;document.getElementById('chart-hover-label').textContent=''" style="cursor:default;transition:opacity 0.15s"/>\`; }).join('');
+  svgEl.innerHTML = \`<defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4ade80" stop-opacity="0.18"/><stop offset="100%" stop-color="#4ade80" stop-opacity="0"/></linearGradient></defs><path d="\${areaPath}" fill="url(#rg)"/><path d="\${linePath}" fill="none" stroke="#4ade80" stroke-width="1.5" stroke-linejoin="round"/>\` + labels + dots;
+}
+
+function renderNewAccountsChart(data) {
+  const total = data.reduce((s, d) => s + d.n, 0);
+  document.getElementById('acct-chart-total').textContent = total + ' total';
+  const svgEl = document.getElementById('acct-chart');
+  if (data.length === 0) { svgEl.innerHTML = '<text x="50%" y="50%" fill="#333" font-size="12" text-anchor="middle" dominant-baseline="middle">No signups yet</text>'; return; }
+  const W = svgEl.parentElement.clientWidth - 32 || 300, H = 60, pad = { top: 4, bottom: 14, left: 2, right: 2 };
+  svgEl.setAttribute('viewBox', \`0 0 \${W} \${H}\`);
+  const vals = data.map(d => d.n), maxV = Math.max(...vals, 1);
+  const xStep = (W - pad.left - pad.right) / vals.length, barW = Math.max(2, xStep - 2);
+  const bars = vals.map((v, i) => { const bh = Math.max(2, (v/maxV)*(H-pad.top-pad.bottom)), x = pad.left+i*xStep, y = H-pad.bottom-bh; const tip = \`\${data[i].date}: \${v} new account\${v!==1?'s':''}\`; return \`<rect x="\${x.toFixed(1)}" y="\${y.toFixed(1)}" width="\${barW.toFixed(1)}" height="\${bh.toFixed(1)}" fill="#1e3a2a" rx="1" onmouseenter="this.setAttribute('fill','#4ade80');document.getElementById('acct-hover-label').textContent='\${tip}'" onmouseleave="this.setAttribute('fill','#1e3a2a');document.getElementById('acct-hover-label').textContent=''" style="cursor:default;transition:fill 0.15s"/>\`; }).join('');
+  const li2 = [0, Math.floor(data.length/2), data.length-1];
+  const labels = li2.map(i => \`<text x="\${(pad.left+i*xStep+barW/2).toFixed(1)}" y="\${H}" fill="#333" font-size="8" text-anchor="middle">\${data[i].date.slice(5).replace('-','/')}</text>\`).join('');
+  svgEl.innerHTML = bars + labels;
+}
+
+function updateAnalyticsPanels(analytics) {
+  document.getElementById('kpi-avg-calls').textContent = analytics.avg_calls_per_account + ' avg calls/acct';
+  document.getElementById('kpi-month-hbar').textContent = analytics.monthly.this_month.hbar + ' ℏ';
+  document.getElementById('kpi-ratelimit').textContent = analytics.rate_limit_hits_24h;
+  const mDelta = pct(parseFloat(analytics.monthly.this_month.hbar), parseFloat(analytics.monthly.last_month.hbar));
+  const mEl = document.getElementById('kpi-month-delta');
+  mEl.textContent = mDelta + ' vs last month';
+  mEl.className = 'card-sub ' + (mDelta.startsWith('+') ? 'up' : mDelta.startsWith('-') ? 'down' : '');
+  document.getElementById('tool-trends').innerHTML = analytics.tool_trends.length === 0
+    ? '<tr><td colspan="4" style="color:#333">No data yet</td></tr>'
+    : analytics.tool_trends.map(t => { const d = t.calls_7d - t.calls_prev_7d; const cls = d>0?'up':d<0?'dn':'flat'; return \`<tr><td>\${t.tool_name}</td><td>\${t.calls_7d}</td><td style="color:#444">\${t.calls_prev_7d}</td><td><span class="trend \${cls}">\${d>0?'+':''}\${d}</span></td></tr>\`; }).join('');
+  document.getElementById('top-spenders').innerHTML = analytics.top_spenders.length === 0
+    ? '<tr><td colspan="3" style="color:#333">No data yet</td></tr>'
+    : analytics.top_spenders.map(s => \`<tr><td class="mono" style="color:#888">\${s.api_key}</td><td>\${s.calls}</td><td style="color:#4ade80">\${s.hbar} ℏ</td></tr>\`).join('');
+  if (analytics.xagent) {
+    const xa = analytics.xagent;
+    document.getElementById('xa-balance').textContent = xa.balance_hbar + ' ℏ';
+    document.getElementById('xa-calls').textContent = xa.calls_24h;
+    document.getElementById('xa-spent').textContent = xa.spent_24h_hbar + ' ℏ spent';
+    document.getElementById('xa-last').textContent = timeAgo(xa.last_used);
+  }
+  if (analytics.daily_revenue && analytics.daily_revenue.length > 0) {
+    const tot = analytics.daily_revenue.reduce((s,d) => s + parseFloat(d.hbar), 0);
+    document.getElementById('h-avg-day').textContent = (tot / analytics.daily_revenue.length).toFixed(4) + ' ℏ';
+  }
+}
+
 async function loadAll() {
   try {
     const [stats, accounts, txs, analytics] = await Promise.all([
       fetchJSON('/admin/stats'),
       fetchJSON('/admin/accounts'),
       fetchJSON('/admin/transactions'),
-      fetchJSON('/admin/analytics'),
+      fetchJSON('/admin/analytics?period=' + activePeriod),
     ]);
 
-    // KPIs
     document.getElementById('kpi-calls').textContent = stats.summary.total_calls.toLocaleString();
     document.getElementById('kpi-accounts').textContent = stats.summary.total_accounts.toLocaleString();
-    document.getElementById('kpi-avg-calls').textContent = analytics.avg_calls_per_account + ' avg calls/acct';
     document.getElementById('kpi-deposited').textContent = stats.summary.total_deposited_hbar + ' ℏ';
-    document.getElementById('kpi-month-hbar').textContent = analytics.monthly.this_month.hbar + ' ℏ';
-    document.getElementById('kpi-ratelimit').textContent = analytics.rate_limit_hits_24h;
-
-    const mDelta = pct(parseFloat(analytics.monthly.this_month.hbar), parseFloat(analytics.monthly.last_month.hbar));
-    const mEl = document.getElementById('kpi-month-delta');
-    mEl.textContent = mDelta + ' vs last month';
-    mEl.className = 'card-sub ' + (mDelta.startsWith('+') ? 'up' : mDelta.startsWith('-') ? 'down' : '');
-
     document.getElementById('watcher-dot').className = 'dot';
     document.getElementById('network-badge').textContent = stats.watcher.network;
 
-    // Revenue chart (SVG line)
-    const rev = analytics.daily_revenue;
-    const totalRev = rev.reduce((s, d) => s + parseFloat(d.hbar), 0);
-    const chartTotal = document.getElementById('chart-total');
-    if (chartTotal) chartTotal.textContent = totalRev.toFixed(4) + ' ℏ total';
-    const svgEl = document.getElementById('revenue-chart');
-    if (rev.length === 0) {
-      svgEl.innerHTML = '<text x="50%" y="50%" fill="#333" font-size="12" text-anchor="middle" dominant-baseline="middle">No data yet</text>';
-    } else {
-      const W = svgEl.parentElement.clientWidth - 32 || 300;
-      const H = 80;
-      const pad = { top: 6, bottom: 16, left: 2, right: 2 };
-      svgEl.setAttribute('viewBox', \`0 0 \${W} \${H}\`);
-      const vals = rev.map(d => parseFloat(d.hbar));
-      const maxV = Math.max(...vals, 0.0001);
-      const xStep = (W - pad.left - pad.right) / Math.max(vals.length - 1, 1);
-      const yScale = v => pad.top + (1 - v / maxV) * (H - pad.top - pad.bottom);
-      const pts = vals.map((v, i) => [pad.left + i * xStep, yScale(v)]);
-      const areaPath = \`M\${pts[0][0]},\${H - pad.bottom} \` +
-        pts.map(([x,y]) => \`L\${x.toFixed(1)},\${y.toFixed(1)}\`).join(' ') +
-        \` L\${pts[pts.length-1][0]},\${H - pad.bottom} Z\`;
-      const linePath = pts.map(([x,y],i) => \`\${i===0?'M':'L'}\${x.toFixed(1)},\${y.toFixed(1)}\`).join(' ');
-      const labelIdxs = [0, Math.floor(rev.length/2), rev.length-1];
-      const labels = labelIdxs.map(i => {
-        const [x] = pts[i];
-        const lbl = rev[i].date.slice(5).replace('-','/');
-        return \`<text x="\${x.toFixed(1)}" y="\${H}" fill="#333" font-size="8" text-anchor="middle">\${lbl}</text>\`;
-      }).join('');
-      const dots = pts.map(([x,y],i) => {
-        const d = rev[i];
-        const amt = parseFloat(d.hbar);
-        const tip = \`\${d.date}: \${amt > 0 ? (amt < 0.01 ? amt.toFixed(4) : amt.toFixed(2)) : '0'} ℏ · \${d.calls} calls\`;
-        return \`<circle cx="\${x.toFixed(1)}" cy="\${y.toFixed(1)}" r="3" fill="#4ade80" opacity="0"
-          onmouseenter="this.style.opacity=1;document.getElementById('chart-hover-label').textContent='\${tip}'"
-          onmouseleave="this.style.opacity=0;document.getElementById('chart-hover-label').textContent=''"
-          style="cursor:default;transition:opacity 0.15s"/>\`;
-      }).join('');
-      svgEl.innerHTML =
-        \`<defs><linearGradient id="rg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4ade80" stop-opacity="0.18"/><stop offset="100%" stop-color="#4ade80" stop-opacity="0"/></linearGradient></defs>\` +
-        \`<path d="\${areaPath}" fill="url(#rg)"/>\` +
-        \`<path d="\${linePath}" fill="none" stroke="#4ade80" stroke-width="1.5" stroke-linejoin="round"/>\` +
-        labels + dots;
-    }
+    // Health strip
+    document.getElementById('h-watcher-status').textContent = stats.watcher.status === 'running' ? 'Running' : 'Down';
+    document.getElementById('h-watcher-dot').className = 'dot' + (stats.watcher.status === 'running' ? '' : ' amber');
+    document.getElementById('h-last-call').textContent = txs.transactions[0] ? timeAgo(txs.transactions[0].timestamp) : '—';
+    document.getElementById('h-active-accounts').textContent = accounts.accounts.filter(a => parseFloat(a.balance_hbar) > 0).length;
 
-    // Tool trends
-    document.getElementById('tool-trends').innerHTML = analytics.tool_trends.length === 0
-      ? '<tr><td colspan="4" style="color:#333">No data yet</td></tr>'
-      : analytics.tool_trends.map(t => {
-          const delta = t.calls_7d - t.calls_prev_7d;
-          const cls = delta > 0 ? 'up' : delta < 0 ? 'dn' : 'flat';
-          const sign = delta > 0 ? '+' : '';
-          return \`<tr>
-            <td>\${t.tool_name}</td>
-            <td>\${t.calls_7d}</td>
-            <td style="color:#444">\${t.calls_prev_7d}</td>
-            <td><span class="trend \${cls}">\${sign}\${delta}</span></td>
-          </tr>\`;
-        }).join('');
+    renderRevenueChart(analytics.daily_revenue);
+    renderNewAccountsChart(analytics.new_accounts_30d);
+    updateAnalyticsPanels(analytics);
 
     // Tool ranking
     const maxCalls = stats.tool_ranking[0]?.calls || 1;
     document.getElementById('tool-ranking').innerHTML = stats.tool_ranking.length === 0
       ? '<tr><td colspan="5" style="color:#333">No calls yet</td></tr>'
-      : stats.tool_ranking.map((t, i) => \`<tr>
-          <td style="color:#444">#\${i+1}</td>
-          <td>\${t.tool}</td>
-          <td>\${t.calls}</td>
-          <td style="color:#4ade80">\${t.revenue_hbar} ℏ</td>
-          <td><div class="bar-wrap"><div class="bar" style="width:\${Math.round((t.calls/maxCalls)*100)}%"></div></div></td>
-        </tr>\`).join('');
-
-    // Top spenders
-    document.getElementById('top-spenders').innerHTML = analytics.top_spenders.length === 0
-      ? '<tr><td colspan="3" style="color:#333">No data yet</td></tr>'
-      : analytics.top_spenders.map(s => \`<tr>
-          <td class="mono" style="color:#888">\${s.api_key}</td>
-          <td>\${s.calls}</td>
-          <td style="color:#4ade80">\${s.hbar} ℏ</td>
-        </tr>\`).join('');
+      : stats.tool_ranking.map((t, i) => \`<tr><td style="color:#444">#\${i+1}</td><td>\${t.tool}</td><td>\${t.calls}</td><td style="color:#4ade80">\${t.revenue_hbar} ℏ</td><td><div class="bar-wrap"><div class="bar" style="width:\${Math.round((t.calls/maxCalls)*100)}%"></div></div></td></tr>\`).join('');
 
     // Accounts
     document.getElementById('accounts-table').innerHTML = accounts.accounts.length === 0
       ? '<tr><td colspan="4" style="color:#333">No accounts yet</td></tr>'
-      : accounts.accounts.map(a => \`<tr>
-          <td class="mono">\${a.api_key}</td>
-          <td style="color:\${parseFloat(a.balance_hbar) > 0 ? '#4ade80' : '#f87171'}">\${a.balance_hbar} ℏ</td>
-          <td style="color:#444">\${timeAgo(a.last_used)}</td>
-          <td><button class="btn danger" style="padding:2px 7px;font-size:10px" onclick="setDeleteKey('\${a.api_key}')">Del</button></td>
-        </tr>\`).join('');
+      : accounts.accounts.map(a => \`<tr><td class="mono">\${a.api_key}</td><td style="color:\${parseFloat(a.balance_hbar)>0?'#4ade80':'#f87171'}">\${a.balance_hbar} ℏ</td><td style="color:#444">\${timeAgo(a.last_used)}</td><td><button class="btn danger" style="padding:2px 7px;font-size:10px" onclick="setDeleteKey('\${a.api_key}')">Del</button></td></tr>\`).join('');
 
     // Recent transactions
     document.getElementById('recent-txs').innerHTML = txs.transactions.length === 0
       ? '<tr><td colspan="4" style="color:#333">No transactions yet</td></tr>'
-      : txs.transactions.slice(0, 15).map(t => \`<tr>
-          <td style="color:#444">\${timeAgo(t.timestamp)}</td>
-          <td class="mono" style="color:#666">\${t.api_key}</td>
-          <td>\${t.tool_name}</td>
-          <td style="color:#4ade80">\${(t.amount_tinybars/100000000).toFixed(4)}</td>
-        </tr>\`).join('');
-
-    // X agent
-    if (analytics.xagent) {
-      const xa = analytics.xagent;
-      document.getElementById('xa-balance').textContent = xa.balance_hbar + ' ℏ';
-      document.getElementById('xa-calls').textContent = xa.calls_24h;
-      document.getElementById('xa-spent').textContent = xa.spent_24h_hbar + ' ℏ spent';
-      document.getElementById('xa-last').textContent = timeAgo(xa.last_used);
-    }
+      : txs.transactions.slice(0, 15).map(t => \`<tr><td style="color:#444">\${timeAgo(t.timestamp)}</td><td class="mono" style="color:#666">\${t.api_key}</td><td>\${t.tool_name}</td><td style="color:#4ade80">\${(t.amount_tinybars/100000000).toFixed(4)}</td></tr>\`).join('');
 
     document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
   } catch(e) { console.error('Dashboard error:', e); }
 }
 
-// ── Provision ──
 async function doProvision() {
   const key = document.getElementById('ctrl-key').value.trim();
   const hbar = parseFloat(document.getElementById('ctrl-hbar').value);
@@ -904,7 +833,6 @@ async function doProvision() {
   } catch(e) { el.style.color='#f87171'; el.textContent = e.message; }
 }
 
-// ── Delete modal ──
 function setDeleteKey(key) { document.getElementById('del-key').value = key; openDeleteModal(); }
 function openDeleteModal() {
   const key = document.getElementById('del-key').value.trim();
@@ -923,15 +851,14 @@ async function doDelete() {
   el.style.color='#888'; el.textContent = 'Deleting...';
   try {
     const r = await fetchJSON('/admin/delete-account', { method: 'DELETE', body: JSON.stringify({ api_key: key }) });
-    if (r.success) {
-      closeDeleteModal();
-      document.getElementById('del-key').value = '';
-      loadAll();
-    } else { el.style.color='#f87171'; el.textContent = r.error || 'Failed'; }
+    if (r.success) { closeDeleteModal(); document.getElementById('del-key').value = ''; loadAll(); }
+    else { el.style.color='#f87171'; el.textContent = r.error || 'Failed'; }
   } catch(e) { el.style.color='#f87171'; el.textContent = e.message; }
 }
 
-// ── Init ──
+// Init
+document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === activePeriod));
+document.getElementById('chart-period-label').textContent = PERIOD_LABELS[activePeriod];
 restorePanelOrder();
 initDragDrop();
 loadAll();
@@ -953,12 +880,8 @@ httpServer.listen(port, () => {
 startWatcher();
 registerWebhook();
 
-// Run PII purge immediately on startup, then daily via digest scheduler
 purgeOldConsentPII();
 
-// ── Automatic daily digest at 08:00 UTC ───────────────────────────────────
-// Sends a morning summary to the owner so you wake up knowing how the
-// platform performed overnight without having to check anything manually.
 import { notifyOwner } from "./telegram.js";
 import { scheduleXAgent } from "./xagent.js";
 
@@ -998,7 +921,6 @@ function scheduleDailyDigest() {
         `Accounts: <b>${allAccounts.length}</b>\n` +
         `HBAR held: <b>${totalHeld.toFixed(4)} ℏ</b>`
       );
-      // Purge old PII daily alongside digest
       purgeOldConsentPII();
       console.error("[Digest] Daily digest sent");
     } catch (e) {
@@ -1021,8 +943,6 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_OWNER_ID) {
 console.error("Hedera network: " + process.env.HEDERA_NETWORK);
 console.error("Tools: " + ALL_TOOLS.map((t) => t.name).join(", "));
 
-// ── Nightly backup to GitHub ──────────────────────────────────────────────────
-// Runs inside the main process — direct access to the DB file, no HTTP needed.
 if (process.env.GITHUB_BACKUP_TOKEN && process.env.GITHUB_BACKUP_REPO) {
   import("https").then(({ default: https }) => {
     async function runBackup() {
@@ -1031,13 +951,10 @@ if (process.env.GITHUB_BACKUP_TOKEN && process.env.GITHUB_BACKUP_REPO) {
       const filename = `backups/hederatoolbox-${today}.db`;
       const repo = process.env.GITHUB_BACKUP_REPO;
       const token = process.env.GITHUB_BACKUP_TOKEN;
-
       console.error(`[Backup] Starting nightly backup to ${repo}/${filename}`);
-
       try {
         const dbFile = readFileSync(dbPath);
         console.error(`[Backup] Read ${(dbFile.length / 1024).toFixed(1)} KB`);
-
         const sha = await new Promise(resolve => {
           const req = https.request({
             hostname: "api.github.com",
@@ -1051,36 +968,23 @@ if (process.env.GITHUB_BACKUP_TOKEN && process.env.GITHUB_BACKUP_REPO) {
           req.on("error", () => resolve(null));
           req.end();
         });
-
         const body = JSON.stringify({
           message: `chore: nightly backup ${today}`,
           content: dbFile.toString("base64"),
           ...(sha ? { sha } : {}),
         });
-
         await new Promise((resolve, reject) => {
           const req = https.request({
             hostname: "api.github.com",
             path: `/repos/${repo}/contents/${filename}`,
             method: "PUT",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "User-Agent": "hederaintel-backup",
-              "Accept": "application/vnd.github+json",
-              "Content-Type": "application/json",
-              "Content-Length": Buffer.byteLength(body),
-            },
+            headers: { "Authorization": `Bearer ${token}`, "User-Agent": "hederaintel-backup", "Accept": "application/vnd.github+json", "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
           }, res => {
             let data = "";
             res.on("data", c => data += c);
             res.on("end", () => {
-              if (res.statusCode === 200 || res.statusCode === 201) {
-                console.error(`[Backup] ✅ Committed to GitHub`);
-                resolve();
-              } else {
-                console.error(`[Backup] ❌ GitHub returned ${res.statusCode}: ${data}`);
-                reject(new Error(`GitHub ${res.statusCode}`));
-              }
+              if (res.statusCode === 200 || res.statusCode === 201) { console.error(`[Backup] ✅ Committed to GitHub`); resolve(); }
+              else { console.error(`[Backup] ❌ GitHub returned ${res.statusCode}: ${data}`); reject(new Error(`GitHub ${res.statusCode}`)); }
             });
           });
           req.on("error", reject);
@@ -1093,16 +997,12 @@ if (process.env.GITHUB_BACKUP_TOKEN && process.env.GITHUB_BACKUP_REPO) {
     }
 
     function scheduleBackup() {
-      const now = new Date();
-      const next2am = new Date();
+      const now = new Date(), next2am = new Date();
       next2am.setUTCHours(2, 0, 0, 0);
       if (next2am <= now) next2am.setUTCDate(next2am.getUTCDate() + 1);
       const msUntil2am = next2am - now;
       console.error(`[Backup] Next backup scheduled in ${Math.round(msUntil2am / 3600000)}h`);
-      setTimeout(() => {
-        runBackup();
-        setInterval(runBackup, 24 * 60 * 60 * 1000);
-      }, msUntil2am);
+      setTimeout(() => { runBackup(); setInterval(runBackup, 24 * 60 * 60 * 1000); }, msUntil2am);
     }
 
     scheduleBackup();
