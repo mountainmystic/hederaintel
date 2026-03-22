@@ -238,7 +238,7 @@ const RUN_PROFILES = [
     name: "contract-intelligence",
     angle: "I analysed a high-activity Hedera smart contract. Show unique callers, tx volume, risk classification. Frame as what builders can automate on top of this signal.",
     tools: () => Promise.all([
-      callTool("contract_analyze", { contract_id: "0.0.1460200" }), // SaucerSwap router
+      callTool("contract_analyze", { contract_id: "0.0.3045981" }), // SaucerSwap V1 Router (active)
     ]),
   },
   {
