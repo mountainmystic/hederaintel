@@ -4,7 +4,7 @@
 import "dotenv/config";
 import { createServer, ALL_TOOLS } from "./server.js";
 import { getCosts } from "./payments.js";
-import { provisionKey, getAllAccounts, getRecentTransactions, checkRateLimit, purgeOldConsentPII } from "./db.js";
+import { provisionKey, getAllAccounts, getRecentTransactions, checkRateLimit, purgeOldConsentPII, getProvenanceByKey, getProvenanceByDid } from "./db.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -322,6 +322,17 @@ const httpServer = http.createServer(async (req, res) => {
         return json(res, 200, { success: true, deleted: { transactions: txDel.changes, consent_events: ceDel.changes, deposits: depDel.changes, accounts: accDel.changes } });
       } catch (e) { db.exec("ROLLBACK"); throw e; }
     } catch (e) { return json(res, 500, { error: e.message }); }
+  }
+
+  if (req.method === "GET" && url.pathname === "/admin/provenance") {
+    if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
+    const { getProvenanceByKey, getProvenanceByDid } = await import("./db.js");
+    const apiKey   = url.searchParams.get("api_key");
+    const agentDid = url.searchParams.get("agent_did");
+    const limit    = Math.min(parseInt(url.searchParams.get("limit") || "100"), 500);
+    if (!apiKey && !agentDid) return json(res, 400, { error: "api_key or agent_did required" });
+    const records = apiKey ? getProvenanceByKey(apiKey, limit) : getProvenanceByDid(agentDid, limit);
+    return json(res, 200, { count: records.length, records });
   }
 
   if (req.method === "GET" && url.pathname === "/admin/dashboard") {

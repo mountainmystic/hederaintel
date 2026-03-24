@@ -10,6 +10,7 @@ import { CONTRACT_TOOL_DEFINITIONS, executeContractTool } from "./modules/contra
 import { ACCOUNT_TOOL_DEFINITIONS, executeAccountTool } from "./modules/account/tools.js";
 import { LEGAL_TOOL_DEFINITIONS, executeLegalTool } from "./modules/legal/tools.js";
 import { checkConsent } from "./consent.js";
+import { logProvenance } from "./db.js";
 
 export const ALL_TOOLS = [
   // Legal / onboarding (always first — agents see these before any paid tool)
@@ -63,7 +64,7 @@ async function routeTool(name, args, req) {
   // ── Consent gate ─────────────────────────────────────────────────────────
   checkConsent(name, args);
 
-  // ── Execute tool ──────────────────────────────────────────────────────────
+  // ── Execute tool ──────────────────────────────────────────────────────
   let result;
   if (["hcs_monitor", "hcs_query", "hcs_understand"].includes(name)) {
     result = await executeHCSTool(name, args);
@@ -80,6 +81,28 @@ async function routeTool(name, args, req) {
   } else {
     throw new Error(`Unknown tool: ${name}`);
   }
+
+  // ── Provenance ────────────────────────────────────────────────────
+  // Fire-and-forget — never blocks or fails the tool response.
+  // inputs_summary: key args minus api_key (no credentials in provenance)
+  // outputs_summary: first 300 chars of result — signal digest, not full payload
+  // risk_flags: extracted from identity/compliance results where applicable
+  setImmediate(() => {
+    try {
+      const { api_key, ...inputRest } = args || {};
+      const inputsSummary  = JSON.stringify(inputRest).slice(0, 300);
+      const outputsSummary = JSON.stringify(result).slice(0, 300);
+      const resultStr      = JSON.stringify(result).toLowerCase();
+      const riskFlags = [
+        resultStr.includes('"risk_score"')   ? "risk_score_present" : null,
+        resultStr.includes('"sanctioned"')   ? "sanctioned_flag"    : null,
+        resultStr.includes('"frozen"')       ? "frozen_flag"        : null,
+        resultStr.includes('"anomaly"')      ? "anomaly_flag"       : null,
+        resultStr.includes('"unusual"')      ? "unusual_activity"   : null,
+      ].filter(Boolean).join(",") || null;
+      logProvenance(args?.api_key, name, inputsSummary, outputsSummary, riskFlags, args?.agent_did || null);
+    } catch { /* never propagate */ }
+  });
 
   return result;
 }

@@ -58,10 +58,23 @@ db.exec(`
     PRIMARY KEY (ip)
   );
 
+  CREATE TABLE IF NOT EXISTS provenance (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    api_key          TEXT NOT NULL,
+    agent_did        TEXT,
+    tool_name        TEXT NOT NULL,
+    inputs_summary   TEXT,
+    outputs_summary  TEXT,
+    risk_flags       TEXT,
+    timestamp        TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_accounts_hedera ON accounts(hedera_account_id);
   CREATE INDEX IF NOT EXISTS idx_transactions_api_key ON transactions(api_key);
   CREATE INDEX IF NOT EXISTS idx_deposits_hedera ON deposits(hedera_account_id);
   CREATE INDEX IF NOT EXISTS idx_consent_api_key ON consent_events(api_key);
+  CREATE INDEX IF NOT EXISTS idx_provenance_api_key ON provenance(api_key);
+  CREATE INDEX IF NOT EXISTS idx_provenance_agent_did ON provenance(agent_did);
 `);
 
 // ─────────────────────────────────────────────
@@ -234,6 +247,50 @@ export function hasConsented(apiKey, termsVersion) {
 
 export function getLatestConsent(apiKey) {
   return consentStmts.getLatest.get(apiKey) || null;
+}
+
+// ─────────────────────────────────────────────
+// Provenance
+// ─────────────────────────────────────────────
+
+const provenanceStmts = {
+  insert: db.prepare(`
+    INSERT INTO provenance (api_key, agent_did, tool_name, inputs_summary, outputs_summary, risk_flags)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `),
+  byKey: db.prepare(`
+    SELECT * FROM provenance WHERE api_key = ? ORDER BY timestamp DESC LIMIT ?
+  `),
+  byDid: db.prepare(`
+    SELECT * FROM provenance WHERE agent_did = ? ORDER BY timestamp DESC LIMIT ?
+  `),
+};
+
+// Write a provenance record after a successful paid tool call.
+// Never throws — a provenance write failure must never fail the tool response.
+export function logProvenance(apiKey, toolName, inputsSummary, outputsSummary, riskFlags, agentDid = null) {
+  try {
+    provenanceStmts.insert.run(
+      apiKey,
+      agentDid || null,
+      toolName,
+      inputsSummary || null,
+      outputsSummary || null,
+      riskFlags || null
+    );
+  } catch (e) {
+    console.error(`[Provenance] Write failed for ${toolName}/${apiKey}: ${e.message}`);
+  }
+}
+
+// Retrieve provenance records for a given api_key (admin use)
+export function getProvenanceByKey(apiKey, limit = 100) {
+  return provenanceStmts.byKey.all(apiKey, limit);
+}
+
+// Retrieve provenance records for a given agent DID (Fixatum use)
+export function getProvenanceByDid(agentDid, limit = 100) {
+  return provenanceStmts.byDid.all(agentDid, limit);
 }
 
 // Purge IP and user_agent from consent_events older than 90 days.
