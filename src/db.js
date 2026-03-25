@@ -70,7 +70,6 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_accounts_hedera ON accounts(hedera_account_id);
-  CREATE INDEX IF NOT EXISTS idx_accounts_agent_did ON accounts(agent_did);
   CREATE INDEX IF NOT EXISTS idx_transactions_api_key ON transactions(api_key);
   CREATE INDEX IF NOT EXISTS idx_deposits_hedera ON deposits(hedera_account_id);
   CREATE INDEX IF NOT EXISTS idx_consent_api_key ON consent_events(api_key);
@@ -298,8 +297,9 @@ export function getProvenanceByDid(agentDid, limit = 100) {
 // Agent DID binding
 // ─────────────────────────────────────────────
 
-// Lazily add agent_did column — safe to run on an existing DB
+// Lazily add agent_did column and its index — safe to run on an existing DB
 try { db.exec(`ALTER TABLE accounts ADD COLUMN agent_did TEXT`); } catch { /* column already exists */ }
+try { db.exec(`CREATE INDEX IF NOT EXISTS idx_accounts_agent_did ON accounts(agent_did)`); } catch { /* index already exists */ }
 
 const didStmts = {
   set: db.prepare(`UPDATE accounts SET agent_did = ? WHERE api_key = ?`),
@@ -365,6 +365,29 @@ export function checkRateLimit(ip) {
   if (row.window_start === windowStart && row.count > FREE_RATE_LIMIT) return true;
 
   return false;
+}
+
+// ─────────────────────────────────────────────
+// Agent DID binding
+// ─────────────────────────────────────────────
+
+// Lazily add agent_did column — safe to run on an existing DB
+try { db.exec(`ALTER TABLE accounts ADD COLUMN agent_did TEXT`); } catch { /* column already exists */ }
+
+const didStmts = {
+  set: db.prepare(`UPDATE accounts SET agent_did = ? WHERE api_key = ?`),
+  get: db.prepare(`SELECT agent_did FROM accounts WHERE api_key = ?`),
+};
+
+// Bind a Fixatum DID to an account. Returns true if the account exists.
+export function setAgentDid(apiKey, agentDid) {
+  const result = didStmts.set.run(agentDid, apiKey);
+  return result.changes > 0;
+}
+
+// Return the stored DID for an account, or null.
+export function getAgentDid(apiKey) {
+  return didStmts.get.get(apiKey)?.agent_did || null;
 }
 
 export { db };
