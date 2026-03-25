@@ -10,7 +10,7 @@ import { CONTRACT_TOOL_DEFINITIONS, executeContractTool } from "./modules/contra
 import { ACCOUNT_TOOL_DEFINITIONS, executeAccountTool } from "./modules/account/tools.js";
 import { LEGAL_TOOL_DEFINITIONS, executeLegalTool } from "./modules/legal/tools.js";
 import { checkConsent } from "./consent.js";
-import { logProvenance } from "./db.js";
+import { logProvenance, getAgentDid } from "./db.js";
 
 export const ALL_TOOLS = [
   // Legal / onboarding (always first — agents see these before any paid tool)
@@ -100,7 +100,8 @@ async function routeTool(name, args, req) {
         resultStr.includes('"anomaly"')      ? "anomaly_flag"       : null,
         resultStr.includes('"unusual"')      ? "unusual_activity"   : null,
       ].filter(Boolean).join(",") || null;
-      logProvenance(args?.api_key, name, inputsSummary, outputsSummary, riskFlags, args?.agent_did || null);
+      const resolvedDid = args?.agent_did || getAgentDid(args?.api_key) || null;
+      logProvenance(args?.api_key, name, inputsSummary, outputsSummary, riskFlags, resolvedDid);
     } catch { /* never propagate */ }
   });
 

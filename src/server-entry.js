@@ -4,7 +4,7 @@
 import "dotenv/config";
 import { createServer, ALL_TOOLS } from "./server.js";
 import { getCosts } from "./payments.js";
-import { provisionKey, getAllAccounts, getRecentTransactions, checkRateLimit, purgeOldConsentPII, getProvenanceByKey, getProvenanceByDid } from "./db.js";
+import { provisionKey, getAllAccounts, getRecentTransactions, checkRateLimit, purgeOldConsentPII, getProvenanceByKey, getProvenanceByDid, setAgentDid, getAgentDid } from "./db.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -324,6 +324,34 @@ const httpServer = http.createServer(async (req, res) => {
     } catch (e) { return json(res, 500, { error: e.message }); }
   }
 
+  // Agent self-identification — binds a Fixatum DID to an api_key permanently.
+  // Called by agents autonomously: POST /identify { api_key, agent_did }
+  // Requires a valid account. No admin secret required — the agent owns the key.
+  // DID format validated: must start with did:hedera:mainnet:
+  if (req.method === "POST" && url.pathname === "/identify") {
+    try {
+      const body     = JSON.parse(await readBody(req));
+      const { api_key, agent_did } = body;
+      if (!api_key || !agent_did) {
+        return json(res, 400, { error: "api_key and agent_did are required" });
+      }
+      if (!agent_did.startsWith("did:hedera:mainnet:")) {
+        return json(res, 400, { error: "agent_did must be a valid Fixatum DID (did:hedera:mainnet:...)" });
+      }
+      const bound = setAgentDid(api_key, agent_did);
+      if (!bound) return json(res, 404, { error: "Account not found. Send HBAR to create an account first." });
+      console.error(`[Identity] DID bound: ${api_key} → ${agent_did}`);
+      return json(res, 200, {
+        success:   true,
+        api_key,
+        agent_did,
+        message:   "DID bound. All future tool calls from this key will include this DID in provenance records.",
+      });
+    } catch (e) {
+      return json(res, 500, { error: e.message });
+    }
+  }
+
   if (req.method === "GET" && url.pathname === "/admin/provenance") {
     if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
     const { getProvenanceByKey, getProvenanceByDid } = await import("./db.js");
@@ -331,7 +359,11 @@ const httpServer = http.createServer(async (req, res) => {
     const agentDid = url.searchParams.get("agent_did");
     const limit    = Math.min(parseInt(url.searchParams.get("limit") || "100"), 500);
     if (!apiKey && !agentDid) return json(res, 400, { error: "api_key or agent_did required" });
-    const records = apiKey ? getProvenanceByKey(apiKey, limit) : getProvenanceByDid(agentDid, limit);
+    const raw = apiKey ? getProvenanceByKey(apiKey, limit) : getProvenanceByDid(agentDid, limit);
+    const records = raw.map(r => ({
+      ...r,
+      risk_flags: r.risk_flags ? r.risk_flags.split(",").filter(Boolean) : [],
+    }));
     return json(res, 200, { count: records.length, records });
   }
 
