@@ -367,27 +367,4 @@ export function checkRateLimit(ip) {
   return false;
 }
 
-// ─────────────────────────────────────────────
-// Agent DID binding
-// ─────────────────────────────────────────────
-
-// Lazily add agent_did column — safe to run on an existing DB
-try { db.exec(`ALTER TABLE accounts ADD COLUMN agent_did TEXT`); } catch { /* column already exists */ }
-
-const didStmts = {
-  set: db.prepare(`UPDATE accounts SET agent_did = ? WHERE api_key = ?`),
-  get: db.prepare(`SELECT agent_did FROM accounts WHERE api_key = ?`),
-};
-
-// Bind a Fixatum DID to an account. Returns true if the account exists.
-export function setAgentDid(apiKey, agentDid) {
-  const result = didStmts.set.run(agentDid, apiKey);
-  return result.changes > 0;
-}
-
-// Return the stored DID for an account, or null.
-export function getAgentDid(apiKey) {
-  return didStmts.get.get(apiKey)?.agent_did || null;
-}
-
 export { db };
