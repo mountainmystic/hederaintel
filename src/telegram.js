@@ -244,6 +244,23 @@ export async function handleTelegramUpdate(update) {
     return;
   }
 
+  // /next — step to the next profile and generate a draft (owner only)
+  if (text === "/next") {
+    if (!isOwner) return sendMessage(chatId, "⛔ Owner only.");
+    const { runXAgentCycle, getCurrentProfileInfo } = await import("./xagent.js");
+    const info = getCurrentProfileInfo();
+    await sendMessage(chatId, `▶️ Running profile <b>${info.name}</b> (${info.pillarLabel})...`);
+    runXAgentCycle("manual /next").catch(e => sendMessage(chatId, `❌ XAgent error: ${e.message}`));
+    return;
+  }
+
+  // /queue — show the upcoming profile rotation (owner only)
+  if (text === "/queue") {
+    if (!isOwner) return sendMessage(chatId, "⛔ Owner only.");
+    const { getQueueInfo } = await import("./xagent.js");
+    return sendMessage(chatId, getQueueInfo());
+  }
+
   // /start command
   if (text === "/start") {
     return sendMessage(chatId,

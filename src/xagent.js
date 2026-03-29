@@ -366,6 +366,35 @@ const RUN_PROFILES = [
 
 let profileIndex = 0;
 
+// ─── Queue helpers ──────────────────────────────────────────────────────────────────────────────
+
+const PILLAR_LABELS = ["", "📊 On-chain intel", "🤖 Agent stack", "📰 Hedera news"];
+
+export function getCurrentProfileInfo() {
+  const profile = RUN_PROFILES[profileIndex % RUN_PROFILES.length];
+  return {
+    name: profile.name,
+    pillar: profile.pillar,
+    pillarLabel: PILLAR_LABELS[profile.pillar] || "",
+    index: profileIndex % RUN_PROFILES.length,
+  };
+}
+
+export function getQueueInfo() {
+  const total = RUN_PROFILES.length;
+  const lines = RUN_PROFILES.map((p, i) => {
+    const pos = (i - (profileIndex % total) + total) % total;
+    const marker = pos === 0 ? "➡️" : `${pos + 1}.`;
+    const pillar = PILLAR_LABELS[p.pillar] || "";
+    return `${marker} <b>${p.name}</b> ${pillar}`;
+  });
+  return `📝 <b>Profile queue</b> (next up first)
+
+${lines.join("\n")}
+
+/next to generate a draft from the next profile.`;
+}
+
 // ─── Main data-gathering + synthesis cycle ────────────────────────────────────
 
 export async function runXAgentCycle(label = "scheduled") {
