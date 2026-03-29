@@ -352,6 +352,20 @@ const httpServer = http.createServer(async (req, res) => {
     }
   }
 
+  // One-shot: clear all provenance risk_flags for a given api_key.
+  // Used when flag logic changes and old records are stale.
+  if (req.method === "POST" && url.pathname === "/admin/provenance/clear-flags") {
+    if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
+    try {
+      const body = JSON.parse(await readBody(req));
+      const { api_key } = body;
+      if (!api_key) return json(res, 400, { error: "api_key required" });
+      const { db } = await import("./db.js");
+      const result = db.prepare(`UPDATE provenance SET risk_flags = NULL WHERE api_key = ?`).run(api_key);
+      return json(res, 200, { success: true, cleared: result.changes });
+    } catch (e) { return json(res, 500, { error: e.message }); }
+  }
+
   if (req.method === "GET" && url.pathname === "/admin/provenance") {
     if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
     const { getProvenanceByKey, getProvenanceByDid } = await import("./db.js");

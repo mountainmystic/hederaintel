@@ -93,12 +93,18 @@ async function routeTool(name, args, req) {
       const inputsSummary  = JSON.stringify(inputRest).slice(0, 300);
       const outputsSummary = JSON.stringify(result).slice(0, 300);
       const resultStr      = JSON.stringify(result).toLowerCase();
+      // Risk flags: only fire on genuinely adverse signals, not on the mere
+      // presence of a risk_score field (which appears in almost every result).
+      // sanctioned/frozen = hard adverse. anomaly/unusual = only when the tool
+      // explicitly surfaces them as a finding, not as a field name.
       const riskFlags = [
-        resultStr.includes('"risk_score"')   ? "risk_score_present" : null,
-        resultStr.includes('"sanctioned"')   ? "sanctioned_flag"    : null,
-        resultStr.includes('"frozen"')       ? "frozen_flag"        : null,
-        resultStr.includes('"anomaly"')      ? "anomaly_flag"       : null,
-        resultStr.includes('"unusual"')      ? "unusual_activity"   : null,
+        resultStr.includes('"sanctioned":true')                ? "sanctioned"       : null,
+        resultStr.includes('"frozen":true')                    ? "frozen"           : null,
+        resultStr.includes('"is_sanctioned":true')             ? "sanctioned"       : null,
+        (resultStr.includes('"anomalies_detected":true') ||
+         resultStr.includes('"anomaly_detected":true'))        ? "anomaly_detected" : null,
+        resultStr.includes('"unusual_activity":true')          ? "unusual_activity" : null,
+        resultStr.includes('"review"') && name === "identity_check_sanctions" ? "screening_review" : null,
       ].filter(Boolean).join(",") || null;
       const resolvedDid = args?.agent_did || getAgentDid(args?.api_key) || null;
       logProvenance(args?.api_key, name, inputsSummary, outputsSummary, riskFlags, resolvedDid);
