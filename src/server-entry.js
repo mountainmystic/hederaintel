@@ -394,6 +394,51 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Public reputation endpoint — read by Fixatum and any external platform.
+  // GET /reputation/:did or GET /reputation?did=...
+  // Returns a credibility summary for a Fixatum DID: call count, date range,
+  // risk flag rate. No auth required — this is the public signal layer.
+  if (req.method === "GET" && (url.pathname === "/reputation" || url.pathname.startsWith("/reputation/"))) {
+    const { getProvenanceByDid } = await import("./db.js");
+    const did = url.pathname.startsWith("/reputation/")
+      ? decodeURIComponent(url.pathname.slice("/reputation/".length))
+      : url.searchParams.get("did");
+    if (!did) return json(res, 400, { error: "DID required. Use /reputation/:did or ?did=..." });
+    if (!did.startsWith("did:hedera:mainnet:")) {
+      return json(res, 400, { error: "Invalid DID format. Expected did:hedera:mainnet:..." });
+    }
+    const records = getProvenanceByDid(did, 1000);
+    if (records.length === 0) {
+      return json(res, 200, {
+        did,
+        verified_calls: 0,
+        first_call: null,
+        last_call: null,
+        active_days: 0,
+        risk_flag_rate: 0,
+        risk_flags_seen: [],
+        summary: "No verified tool calls on record for this DID.",
+      });
+    }
+    const flagged = records.filter(r => r.risk_flags && r.risk_flags.length > 0);
+    const allFlags = [...new Set(
+      records.flatMap(r => r.risk_flags ? r.risk_flags.split(",").filter(Boolean) : [])
+    )];
+    const timestamps = records.map(r => r.timestamp).sort();
+    const days = new Set(timestamps.map(t => t.slice(0, 10))).size;
+    return json(res, 200, {
+      did,
+      verified_calls: records.length,
+      first_call: timestamps[0],
+      last_call: timestamps[timestamps.length - 1],
+      active_days: days,
+      risk_flag_rate: parseFloat((flagged.length / records.length).toFixed(4)),
+      risk_flags_seen: allFlags,
+      source: "api.hederatoolbox.com",
+      summary: `${records.length} verified tool calls over ${days} active days. Risk flag rate: ${(flagged.length / records.length * 100).toFixed(1)}%.`,
+    });
+  }
+
   return json(res, 404, { error: "Not found", mcp_endpoint: "/mcp" });
 });
 
