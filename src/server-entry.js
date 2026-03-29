@@ -13,6 +13,7 @@ const TERMS = JSON.parse(readFileSync(path.join(__dirname, "../legal/terms.json"
 const { version: VERSION } = JSON.parse(readFileSync(path.join(__dirname, "../package.json"), "utf-8"));
 import { startWatcher } from "./watcher.js";
 import { handleTelegramUpdate, registerWebhook } from "./telegram.js";
+import { scheduleVisionForge, handleVisionForgeCommand } from "./visionforge.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import http from "http";
 
@@ -1039,6 +1040,7 @@ function scheduleDailyDigest() {
 if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_OWNER_ID) {
   scheduleDailyDigest();
   scheduleXAgent();
+  scheduleVisionForge();
 } else {
   console.error("[Digest] Telegram not configured — daily digest disabled");
 }

@@ -4,6 +4,8 @@
 // Registers webhook with Telegram on startup.
 
 import https from "https";
+import { handleVisionForgeCommand } from "./visionforge.js";
+import { handleXAgentEdit } from "./xagent.js";
 
 const BOT_TOKEN  = process.env.TELEGRAM_BOT_TOKEN;
 const OWNER_ID   = process.env.TELEGRAM_OWNER_ID;   // your personal Telegram user ID
@@ -365,6 +367,18 @@ export async function handleTelegramUpdate(update) {
 
   // Add user message to history
   addToHistory(chatId, "user", text);
+
+  // Owner command routing — /approve, /skip (VisionForge), /edit (XAgent)
+  if (isOwner) {
+    if (text.startsWith("/approve") || text.startsWith("/skip")) {
+      const handled = await handleVisionForgeCommand(chatId, text);
+      if (handled) return;
+    }
+    if (text.startsWith("/edit ")) {
+      const newText = text.replace(/^\/edit\s+/, "").trim();
+      if (newText) { await handleXAgentEdit(chatId, newText); return; }
+    }
+  }
 
   // Show typing indicator
   await telegramRequest("sendChatAction", { chat_id: chatId, action: "typing" });
