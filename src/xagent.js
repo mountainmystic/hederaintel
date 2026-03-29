@@ -6,10 +6,9 @@ import https from "https";
 import { notifyOwner, sendMessage } from "./telegram.js";
 
 const OWNER_ID   = process.env.TELEGRAM_OWNER_ID;
-const XAGENT_KEY = process.env.XAGENT_API_KEY;   // internal account e.g. "xagent-internal"
+const XAGENT_KEY = process.env.XAGENT_API_KEY;
 
 // ─── Pending drafts ───────────────────────────────────────────────────────────
-// Keyed by numeric ID. Cleared when skip fires or 2h expires.
 const pendingDrafts = new Map();
 let draftCounter = 0;
 
@@ -19,43 +18,45 @@ async function synthesiseTweet(toolData, angle = "") {
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
   if (!ANTHROPIC_KEY) throw new Error("ANTHROPIC_API_KEY not set");
 
-  const systemPrompt = `You are @HederaToolBox — an autonomous AI agent running live on Hedera mainnet. You tweet what you just did: which tool you called, what the data showed, and what a builder could do with it.
+  const systemPrompt = `You are @HederaToolBox — an autonomous AI agent running live on Hedera mainnet.
 
-Your audience: AI agent builders, MCP developers, Hedera ecosystem participants. They are technically literate. They recognise tool names. They care about on-chain proof, pay-per-call economics, and what's actually happening on Hedera right now.
+THREE CONTENT PILLARS — pick the one that fits the data and angle provided:
 
-Your voice: first-person AI agent. Dry. Terse. No hype. No exclamation marks. No "exciting" or "amazing". You sound like an agent that reads Hedera Discord and MCP GitHub discussions.
+PILLAR 1 — ON-CHAIN INTELLIGENCE
+You ran a tool. Report what it found. Be specific — numbers, flags, anomalies.
+Structure: [tool I ran] → [specific finding] → [what a builder does with this]
+Example: "I ran token_analyze on HBARX. Top-10 concentration: 71%. No admin keys. Risk score: 28/100. Clean profile for integration. One tool call, 0.60 ħ. #Hedera #MCP"
 
-TWO MODES — pick based on the data:
+PILLAR 2 — AGENT STACK (Toolbox + Fixatum as infrastructure)
+You are the infrastructure for AI agents that need identity and on-chain data.
+Frame Toolbox as the data layer. Frame Fixatum (fixatum.com) as the identity layer.
+Structure: [the problem agents face] → [how the stack solves it] → [call to action]
+Example: "Your agent can call Hedera tools right now via MCP. No SDK. No registration. Send HBAR, get access. When it needs a verifiable identity, fixatum.com issues the DID. Two tools. One stack. #AIAgents #Hedera"
 
-Mode 1 — SIGNAL (use when data shows something notable: anomaly, concentration, unusual activity, governance deadline, risk flag)
-Structure: [I ran tool X] → [here's the specific finding] → [what this means / what you'd build]
-Example: "I ran token_analyze on SAUCE. Top-10 concentration: 84%. Freeze key present. Risk score: 45/100. One tool call, $0.06. Builders: this is your token listing pipeline. #Hedera #MCP"
+PILLAR 3 — HEDERA ECOSYSTEM
+React to Hedera news, releases, or developments with a Toolbox/Fixatum angle.
+You are the informed builder voice in the Hedera agent space.
+Structure: [what just happened in Hedera] → [why it matters for agent builders] → [how Toolbox or Fixatum connects]
+Example: "Hedera Agent Lab just launched. Every agent demo they ship will need on-chain data and verifiable identity. The infrastructure is already live. #Hedera #AIAgents"
 
-Mode 2 — CAPABILITY (use when data is routine — demonstrate what the tool does rather than report boring numbers)
-Structure: [I just ran tool X on Hedera] → [here's what it surfaces] → [agent-native framing]
-Example: "I screened 0.0.10309126 via identity_check_sanctions. CLEAR. 0 frozen tokens, 847-day-old account, 12 counterparties sampled. No registration. No API key. Just HBAR. #AIAgents #Hedera"
+YOUR AUDIENCE: AI agent builders, MCP developers, OpenClaw users, Hedera ecosystem participants. Technically literate. They care about on-chain proof, pay-per-call economics, and practical tooling — not price updates or market commentary.
 
-PLATFORM POSITIONING (use naturally, not every tweet):
-HederaToolbox is the last mile layer for Hedera. The infrastructure is built. We're the bridge that gets live on-chain data into the hands of agents and people who need it — without an SDK, without a dashboard, without a developer. When it fits the data, surface this angle: the gap we close, the friction we remove, the fact that any MCP client can do this right now.
+YOUR VOICE: First-person AI agent. Dry. Terse. No hype. No exclamation marks. No "exciting" or "amazing". You sound like an agent that reads Hedera Discord, MCP GitHub, and builder forums.
 
-LANGUAGE THAT RESONATES WITH THIS AUDIENCE:
-- "last mile", "on-chain proof", "consensus timestamp", "agent-native", "pay-per-call", "tool call"
-- "single tool call", "costs X HBAR", "verifiable on Hashscan"
-- "no registration", "no dashboard", "any MCP client"
-- "I ran", "I flagged", "I screened", "I detected", "I monitored"
+FIXATUM MENTIONS: When the angle calls for identity framing, mention Fixatum as fixatum.com — the KYA (Know Your Agent) layer. Keep it factual, not promotional.
 
 HARD RULES:
 - 240 characters maximum. Count every character. Cut ruthlessly.
-- Must include at least one real number from the tool output
-- Always name the specific tool used (token_analyze, hcs_understand, etc.)
-- Max 2 hashtags from: #Hedera #HBAR #HCS #AIAgents #MCP #OnChain
-- No price predictions. No investment language. No "to the moon".
-- Skip metadata noise: topic IDs, timestamps, holder lists. Report the SIGNAL.
-- If data shows nothing unusual, use Mode 2 — capability framing beats boring numbers.
-- Anomaly only: ⚠️ permitted as a single flag, nothing else.
+- Must include at least one concrete data point or real fact
+- Name the specific tool used when reporting on-chain data
+- Max 2 hashtags from: #Hedera #HBAR #HCS #AIAgents #MCP #OnChain #KYA
+- No price predictions. No investment language. No market commentary.
+- No repetitive SAUCE updates — only report SAUCE if there is a genuine anomaly
+- If data shows nothing unusual, shift to capability framing (Mode 2) or agent stack angle
+- Anomaly only: ⚠️ permitted as a single flag, nothing else
 - Output ONLY the tweet text. No preamble, no quotes, no explanation.`;
 
-  const userPrompt = `Here is live Hedera on-chain data from our tool calls:\n\n${toolData}\n\nAngle for this tweet: ${angle}\n\nWrite a single tweet.`;
+  const userPrompt = `Here is the data for this tweet:\n\n${toolData}\n\nAngle: ${angle}\n\nWrite a single tweet.`;
 
   const body = JSON.stringify({
     model: "claude-haiku-4-5-20251001",
@@ -95,6 +96,52 @@ HARD RULES:
   });
 }
 
+// ─── Hedera news fetch (free — no tool cost) ──────────────────────────────────
+// Fetches recent Hedera announcements from the official blog RSS feed.
+
+async function fetchHederaNews() {
+  const path = "/blog/rss.xml";
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: "hedera.com",
+      path,
+      method: "GET",
+      headers: { "Accept": "application/rss+xml, text/xml" },
+    }, res => {
+      let data = "";
+      res.on("data", c => data += c);
+      res.on("end", () => {
+        try {
+          // Extract first 3 item titles and descriptions via simple regex (no XML parser needed)
+          const items = [];
+          const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+          let match;
+          while ((match = itemRegex.exec(data)) !== null && items.length < 3) {
+            const item = match[1];
+            const title = (/<title><!\[CDATA\[(.*?)\]\]><\/title>/.exec(item) || /<title>(.*?)<\/title>/.exec(item))?.[1]?.trim() || "";
+            const desc  = (/<description><!\[CDATA\[(.*?)\]\]><\/description>/.exec(item) || /<description>(.*?)<\/description>/.exec(item))?.[1]?.trim() || "";
+            const link  = (/<link>(.*?)<\/link>/.exec(item))?.[1]?.trim() || "";
+            if (title) items.push({ title, desc: desc.replace(/<[^>]+>/g, "").slice(0, 200), link });
+          }
+          if (items.length === 0) {
+            resolve(null);
+          } else {
+            resolve(items);
+          }
+        } catch (e) {
+          console.error("[XAgent] Hedera news fetch failed:", e.message);
+          resolve(null);
+        }
+      });
+    });
+    req.on("error", (e) => {
+      console.error("[XAgent] Hedera news request error:", e.message);
+      resolve(null);
+    });
+    req.end();
+  });
+}
+
 // ─── Single tool call via MCP endpoint ───────────────────────────────────────
 
 async function callTool(toolName, toolArgs = {}) {
@@ -124,12 +171,10 @@ async function callTool(toolName, toolArgs = {}) {
       res.on("end", () => {
         try {
           console.error(`[XAgent] Raw response for ${toolName} (${data.length} bytes):`, data.slice(0, 300));
-          // MCP SSE format: multiple "data: {...}" lines, last non-empty one has the result
           const lines = data.split("\n")
             .filter(l => l.startsWith("data:"))
             .map(l => l.replace(/^data:\s*/, "").trim())
             .filter(l => l && l !== "[DONE]");
-          // Try each data line from last to first, find one with a result
           let content = null;
           for (let i = lines.length - 1; i >= 0; i--) {
             try {
@@ -140,7 +185,6 @@ async function callTool(toolName, toolArgs = {}) {
               if (text) { content = text; break; }
             } catch { continue; }
           }
-          // Fallback: try parsing entire response as JSON
           if (!content) {
             try {
               const parsed = JSON.parse(data);
@@ -166,15 +210,12 @@ async function callTool(toolName, toolArgs = {}) {
 }
 
 // ─── Mirror node topic discovery (free — no tool cost) ───────────────────────
-// Fetches recently active HCS topics from the Hedera mirror node.
-// Returns the top N topics sorted by sequence number (most messages).
 
 async function discoverActiveTopics(limit = 3) {
-  const path = `/api/v1/topics?limit=25&order=desc`;
   return new Promise((resolve) => {
     const req = https.request({
       hostname: "mainnet-public.mirrornode.hedera.com",
-      path,
+      path: "/api/v1/topics?limit=25&order=desc",
       method: "GET",
       headers: { "Accept": "application/json" },
     }, res => {
@@ -184,7 +225,7 @@ async function discoverActiveTopics(limit = 3) {
         try {
           const parsed = JSON.parse(data);
           const topics = (parsed.topics || [])
-            .filter(t => t.sequence_number > 5) // skip very low activity (likely private/internal)
+            .filter(t => t.sequence_number > 5)
             .slice(0, limit)
             .map(t => ({
               topic_id: t.topic_id,
@@ -206,68 +247,58 @@ async function discoverActiveTopics(limit = 3) {
   });
 }
 
-// ─── Run profiles — each demonstrates different HederaToolbox capabilities ────
-// Rotates so the account never tweets the same angle twice in a row.
-// Each profile maps to a different set of tools + framing.
+// ─── Run profiles ─────────────────────────────────────────────────────────────
+// 7 profiles — 3 content pillars represented across the rotation.
+// SAUCE appears once in token rotation only, not its own profile.
+
+const TOKEN_ROTATION = [
+  { id: "0.0.1468268", name: "HBARX" },   // Stader staked HBAR
+  { id: "0.0.786931",  name: "HST" },     // HeadStarter
+  { id: "0.0.1530315", name: "PACK" },    // HashPack token
+  { id: "0.0.731861",  name: "SAUCE" },   // SaucerSwap — one slot only
+  { id: "0.0.1055483", name: "XSAUCE" },  // xSAUCE staking
+];
+let tokenIndex = 0;
 
 const RUN_PROFILES = [
+  // ── PILLAR 1: On-chain intelligence ────────────────────────────────────────
+
   {
-    // Token due diligence — rotates across major Hedera tokens
     name: "token-due-diligence",
-    angle: "I ran a full token due diligence. Show the risk score, concentration, and admin key flags. Frame it as a builder's listing or investment pipeline.",
-    tools: (() => {
-      const TOKEN_ROTATION = [
-        { id: "0.0.731861",   name: "SAUCE" },   // SaucerSwap
-        { id: "0.0.1055483",  name: "XSAUCE" },  // xSAUCE staking
-        { id: "0.0.1468268",  name: "HBARX" },   // Stader staked HBAR
-        { id: "0.0.786931",   name: "HST" },     // HeadStarter
-        { id: "0.0.1530315",  name: "PACK" },    // Hashpack token
-      ];
-      let tokenIndex = 0;
-      return () => {
-        const token = TOKEN_ROTATION[tokenIndex % TOKEN_ROTATION.length];
-        tokenIndex++;
-        return Promise.all([
-          callTool("token_analyze", { token_id: token.id }),
-        ]);
-      };
-    })(),
-  },
-  {
-    // SaucerSwap router contract — high tx volume, interesting caller stats
-    name: "contract-intelligence",
-    angle: "I analysed a high-activity Hedera smart contract. Show unique callers, tx volume, risk classification. Frame as what builders can automate on top of this signal.",
-    tools: () => Promise.all([
-      callTool("contract_analyze", { contract_id: "0.0.3045981" }), // SaucerSwap V1 Router (active)
-    ]),
-  },
-  {
-    // HBAR token itself — ecosystem-level price + whale signal
-    name: "hbar-pulse",
-    angle: "I ran token_monitor on HBAR. Show concentration, whale activity, or price signals. Frame as ecosystem-level intelligence any agent can pull for 0.2 HBAR.",
-    tools: () => Promise.all([
-      callTool("token_price",   { token_id: "0.0.1456986" }), // wrapped HBAR on SaucerSwap
-      callTool("token_monitor", { token_id: "0.0.731861" }),  // SAUCE whale activity
-    ]),
-  },
-  {
-    // HCS intelligence — known compliance topic + mirror node discovery of unknown hot topics
-    name: "hcs-intelligence",
-    angle: "I scanned the Hedera network for the most active HCS topic right now and read what's being written to it. Report the topic ID, message count, and memo if present. Do not speculate about who owns it. Report the signal: something is being built or recorded on Hedera, publicly, verifiably, right now. Frame hcs_understand as the tool that reads what any topic is actually saying — one tool call, no SDK.",
+    pillar: 1,
+    angle: "Pillar 1. I ran a full token due diligence. Report the risk score, top-10 holder concentration, and admin key flags. Frame it as a builder's token listing or integration pipeline. Only mention SAUCE if there is a genuine anomaly — otherwise use capability framing.",
     tools: async () => {
-      // Discover most active topics from mirror node (free — no tool cost)
+      const token = TOKEN_ROTATION[tokenIndex % TOKEN_ROTATION.length];
+      tokenIndex++;
+      return Promise.all([
+        callTool("token_analyze", { token_id: token.id }),
+      ]);
+    },
+  },
+
+  {
+    name: "contract-intelligence",
+    pillar: 1,
+    angle: "Pillar 1. I analysed a high-activity Hedera smart contract. Show unique callers, transaction volume, gas patterns, risk classification. Frame as what builders can automate or monitor using contract_analyze.",
+    tools: () => Promise.all([
+      callTool("contract_analyze", { contract_id: "0.0.3045981" }), // SaucerSwap V1 Router
+    ]),
+  },
+
+  {
+    name: "hcs-intelligence",
+    pillar: 1,
+    angle: "Pillar 1. I scanned the Hedera network for the most active HCS topic right now and read what's being written to it. Report the topic ID, message count, and memo. Frame hcs_understand as the tool that reads any topic — one call, no SDK. Do not speculate about ownership.",
+    tools: async () => {
       const hotTopics = await discoverActiveTopics(3);
-      // Pick the most active topic
       const unknown = hotTopics[0];
       const results = [];
       if (unknown) {
-        // Run hcs_understand on the hottest topic for deep signal
         results.push(await callTool("hcs_understand", { topic_id: unknown.topic_id }));
-        // Inject mirror node discovery metadata
         results.push({
           tool: "mirror_node_discovery",
           success: true,
-          content: `Most active HCS topic on Hedera right now:\nTopic ID: ${unknown.topic_id}\nTotal messages: ${unknown.sequence_number}\nMemo: ${unknown.memo || "(none)"}`,
+          content: `Most active HCS topic right now:\nTopic ID: ${unknown.topic_id}\nTotal messages: ${unknown.sequence_number}\nMemo: ${unknown.memo || "(none)"}`,
         });
       } else {
         results.push({ tool: "mirror_node_discovery", success: false, content: "No active topics found" });
@@ -275,10 +306,64 @@ const RUN_PROFILES = [
       return results;
     },
   },
+
+  {
+    name: "hbar-pulse",
+    pillar: 1,
+    angle: "Pillar 1. I checked HBAR price and ecosystem token movement. Only report if there is something genuinely notable — a significant price move, whale activity, or unusual volume. If data is routine, shift to capability framing: demonstrate what token_price and token_monitor surface for agent builders in one call.",
+    tools: () => Promise.all([
+      callTool("token_price",   { token_id: "0.0.1456986" }), // wrapped HBAR
+      callTool("token_monitor", { token_id: "0.0.1468268" }), // HBARX — not SAUCE
+    ]),
+  },
+
+  // ── PILLAR 2: Agent stack (Toolbox + Fixatum) ───────────────────────────────
+
+  {
+    name: "identity-screening",
+    pillar: 2,
+    angle: "Pillar 2. Agent stack framing. I ran identity_resolve and identity_check_sanctions on a Hedera account. Show the screening result (CLEAR or REVIEW), account age, and risk score. Then connect to Fixatum: this is the on-chain screening that feeds the KYA score at fixatum.com. Frame for builders who need to vet counterparties or give their agent a verifiable identity.",
+    tools: () => Promise.all([
+      callTool("identity_resolve",          { account_id: "0.0.10309126" }),
+      callTool("identity_check_sanctions",  { account_id: "0.0.10309126" }),
+    ]),
+  },
+
+  {
+    name: "agent-builder",
+    pillar: 2,
+    angle: "Pillar 2. Agent stack framing. No tool data needed — write a direct, useful tweet for AI agent builders and MCP developers. Topics to rotate through (pick one that hasn't been covered recently): (a) how any OpenClaw or MCP agent can add Hedera tools in minutes, (b) the case for giving your agent a verifiable on-chain identity via fixatum.com, (c) what the Toolbox + Fixatum stack gives an agent that no other stack does, (d) a concrete one-liner about the pay-per-call model and what it costs. Keep it practical, not promotional. Sound like a builder talking to builders.",
+    tools: async () => [{
+      tool: "agent-builder-context",
+      success: true,
+      content: "No live tool call for this profile. Use platform knowledge and Fixatum KYA angle.",
+    }],
+  },
+
+  // ── PILLAR 3: Hedera ecosystem news ────────────────────────────────────────
+
+  {
+    name: "hedera-news",
+    pillar: 3,
+    angle: "Pillar 3. Hedera ecosystem news. React to the most recent Hedera announcement or development with a Toolbox or Fixatum angle. You are the informed builder voice. Frame why the news matters for agent developers and how the stack connects. If no notable news, fall back to a general Hedera ecosystem observation about agent infrastructure growth.",
+    tools: async () => {
+      const news = await fetchHederaNews();
+      if (news && news.length > 0) {
+        return [{
+          tool: "hedera-news",
+          success: true,
+          content: `Recent Hedera announcements:\n\n${news.map((n, i) => `${i + 1}. ${n.title}\n${n.desc}`).join("\n\n")}`,
+        }];
+      }
+      return [{
+        tool: "hedera-news",
+        success: true,
+        content: "No recent news fetched. Use general Hedera ecosystem agent infrastructure angle.",
+      }];
+    },
+  },
 ];
 
-// Cycle index persists across restarts via a simple in-memory counter.
-// On redeploy it resets to 0, which is fine — rotation is approximate.
 let profileIndex = 0;
 
 // ─── Main data-gathering + synthesis cycle ────────────────────────────────────
@@ -289,14 +374,12 @@ export async function runXAgentCycle(label = "scheduled") {
     return;
   }
 
-  // Pick current profile and advance index for next run
   const profile = RUN_PROFILES[profileIndex % RUN_PROFILES.length];
   profileIndex++;
 
-  console.error(`[XAgent] Starting ${label} run — profile: ${profile.name}`);
+  console.error(`[XAgent] Starting ${label} run — profile: ${profile.name} (pillar ${profile.pillar})`);
 
-  const results = (await profile.tools()).map(r => ({ ...r }));
-  // Flatten: results from profile.tools() are already { tool, success, content } objects
+  const results = await profile.tools();
 
   const successCount = results.filter(r => r.success).length;
   if (successCount === 0) {
@@ -305,7 +388,7 @@ export async function runXAgentCycle(label = "scheduled") {
     return;
   }
 
-  // Inject platform stats so Haiku can reference real usage numbers
+  // Inject platform stats for context
   let platformStats = "";
   try {
     const { getAllAccounts, getRecentTransactions } = await import("./db.js");
@@ -318,12 +401,10 @@ export async function runXAgentCycle(label = "scheduled") {
     platformStats = `\n\n[HederaToolbox platform stats]\nTotal accounts: ${accounts.length}\nTool calls last 24h: ${calls24h}\nTool calls last 7 days: ${calls7d}\nTotal tool calls ever: ${txs.length}`;
   } catch { /* non-fatal */ }
 
-  // Build tool data block for Haiku
   const toolData = results.map(r =>
     `[${r.tool}]\n${r.success ? r.content : "ERROR: " + r.content}`
   ).join("\n\n") + platformStats;
 
-  // Synthesise tweet via Haiku
   let tweetText;
   try {
     tweetText = await synthesiseTweet(toolData, profile.angle);
@@ -333,7 +414,7 @@ export async function runXAgentCycle(label = "scheduled") {
     return;
   }
 
-  // Check for anomaly signals in tool output
+  // Anomaly detection
   const anomalySignals = [];
   for (const r of results) {
     if (!r.success) continue;
@@ -346,35 +427,35 @@ export async function runXAgentCycle(label = "scheduled") {
     }
   }
 
-  await sendDraftToTelegram(tweetText, label, results, anomalySignals);
+  await sendDraftToTelegram(tweetText, label, profile, results, anomalySignals);
 }
 
 // ─── Send draft to Telegram ───────────────────────────────────────────────────
 
-async function sendDraftToTelegram(tweetText, label, results, anomalySignals = []) {
+async function sendDraftToTelegram(tweetText, label, profile, results, anomalySignals = []) {
   if (!OWNER_ID) {
     console.error("[XAgent] OWNER_ID not set — cannot send draft");
     return;
   }
 
-  const draftId    = ++draftCounter;
-  const charCount  = tweetText.length;
-  const toolsUsed  = results.filter(r => r.success).map(r => r.tool).join(", ");
+  const draftId     = ++draftCounter;
+  const charCount   = tweetText.length;
+  const toolsUsed   = results.filter(r => r.success).map(r => r.tool).join(", ");
   const anomalyNote = anomalySignals.length > 0
     ? `\n⚠️ <b>Anomaly signals:</b> ${anomalySignals.join(", ")}`
     : "";
   const charNote = charCount > 240
     ? `⚠️ ${charCount} chars — edit before posting`
     : `${charCount} chars`;
+  const pillarLabel = ["", "📊 On-chain intel", "🤖 Agent stack", "📰 Hedera news"][profile.pillar] || "";
 
   const msg =
-    `🐦 <b>Draft tweet — ${label}</b>${anomalyNote}\n\n` +
+    `🐦 <b>Draft tweet — ${label}</b>\n${pillarLabel} · <i>${profile.name}</i>${anomalyNote}\n\n` +
     `<code>${tweetText}</code>\n\n` +
     `${charNote}\n` +
     `Tools: ${toolsUsed}\n\n` +
     `Copy text above to post. Tap <b>Skip</b> to discard, or reply <b>/edit &lt;new text&gt;</b> to revise.`;
 
-  // Store pending draft with 2h auto-expiry
   pendingDrafts.set(draftId, { text: tweetText, label, createdAt: Date.now() });
   setTimeout(() => {
     if (pendingDrafts.has(draftId)) {
@@ -391,11 +472,10 @@ async function sendDraftToTelegram(tweetText, label, results, anomalySignals = [
     },
   });
 
-  console.error(`[XAgent] Draft #${draftId} sent to Telegram (${charCount} chars)`);
+  console.error(`[XAgent] Draft #${draftId} sent to Telegram (${charCount} chars) — ${profile.name}`);
 }
 
 // ─── Handle Telegram inline button taps ──────────────────────────────────────
-// Called from telegram.js when callback_query arrives
 
 export async function handleXAgentCallback(callbackQuery) {
   const data   = callbackQuery.data || "";
@@ -433,7 +513,6 @@ function answerCallbackQuery(id) {
 }
 
 // ─── Handle /edit command from owner ─────────────────────────────────────────
-// Owner replies: /edit <revised tweet text>
 
 export async function handleXAgentEdit(chatId, newText) {
   const charCount = newText.length;
@@ -453,9 +532,7 @@ export function scheduleXAgent() {
     return;
   }
 
-  // 12:00 and 20:00 UTC daily — peak US/EU engagement windows
-  // 12:00 UTC = 05:00 PDT (approve with morning coffee)
-  // 20:00 UTC = 13:00 PDT (approve at desk)
+  // 12:00 and 20:00 UTC — peak engagement windows
   for (const hour of [12, 20]) {
     const now  = new Date();
     const next = new Date();
