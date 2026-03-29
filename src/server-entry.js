@@ -396,7 +396,7 @@ const httpServer = http.createServer(async (req, res) => {
       return res.end("Unauthorized");
     }
     res.writeHead(200, { "Content-Type": "text/html" });
-    res.end(getDashboardHTML());
+    res.end(getDashboardHTML(secret));
     return;
   }
 
@@ -469,7 +469,7 @@ const httpServer = http.createServer(async (req, res) => {
   return json(res, 404, { error: "Not found", mcp_endpoint: "/mcp" });
 });
 
-function getDashboardHTML() {
+function getDashboardHTML(adminSecret) {
   const platformAccount = process.env.HEDERA_ACCOUNT_ID || "";
   const hasXAgent = !!process.env.XAGENT_API_KEY;
   return `<!DOCTYPE html>
@@ -755,16 +755,11 @@ function getDashboardHTML() {
 </div>
 
 <script>
-const SECRET = sessionStorage.getItem('hederatoolbox_admin_secret') || '';
-if (!SECRET) {
-  const input = prompt('Admin secret:');
-  if (input) sessionStorage.setItem('hederatoolbox_admin_secret', input);
-  location.reload();
-}
+const SECRET = '${adminSecret}';
 
 async function fetchJSON(path, opts = {}) {
   const r = await fetch(path, { ...opts, headers: { 'x-admin-secret': SECRET, 'Content-Type': 'application/json', ...(opts.headers||{}) } });
-  if (r.status === 401) { sessionStorage.removeItem('hederatoolbox_admin_secret'); alert('Invalid secret.'); throw new Error('Unauthorized'); }
+  if (r.status === 401) { alert('Session expired. Please reload.'); throw new Error('Unauthorized'); }
   return r.json();
 }
 
