@@ -383,6 +383,18 @@ const httpServer = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && url.pathname === "/admin/dashboard") {
+    const secret = process.env.ADMIN_SECRET;
+    const authHeader = req.headers["authorization"] || "";
+    const encoded = authHeader.replace(/^Basic\s+/, "");
+    const decoded = Buffer.from(encoded, "base64").toString("utf-8");
+    const provided = decoded.split(":").slice(1).join(":"); // password portion only
+    if (!secret || provided !== secret) {
+      res.writeHead(401, {
+        "Content-Type": "text/html; charset=utf-8",
+        "WWW-Authenticate": 'Basic realm="HederaToolbox Admin"',
+      });
+      return res.end("Unauthorized");
+    }
     res.writeHead(200, { "Content-Type": "text/html" });
     res.end(getDashboardHTML());
     return;
