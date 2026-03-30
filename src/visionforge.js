@@ -54,26 +54,46 @@ async function getAccountBalance(accountId) {
 
 async function getToolboxStats() {
   if (!ADMIN_SECRET) return null;
-  return new Promise((resolve) => {
-    const req = https.request({
-      hostname: "api.hederatoolbox.com",
-      path: "/admin/stats",
-      method: "GET",
-      headers: {
-        "x-admin-secret": ADMIN_SECRET,
-        "Accept": "application/json",
-      },
-    }, res => {
-      let data = "";
-      res.on("data", c => data += c);
-      res.on("end", () => {
-        try { resolve(JSON.parse(data)); }
-        catch { resolve(null); }
+  // Fetch both stats and analytics in parallel — each has different fields
+  const [stats, analytics] = await Promise.all([
+    new Promise((resolve) => {
+      const req = https.request({
+        hostname: "api.hederatoolbox.com",
+        path: "/admin/stats",
+        method: "GET",
+        headers: { "x-admin-secret": ADMIN_SECRET, "Accept": "application/json" },
+      }, res => {
+        let data = "";
+        res.on("data", c => data += c);
+        res.on("end", () => { try { resolve(JSON.parse(data)); } catch { resolve(null); } });
       });
-    });
-    req.on("error", () => resolve(null));
-    req.end();
-  });
+      req.on("error", () => resolve(null));
+      req.end();
+    }),
+    new Promise((resolve) => {
+      const req = https.request({
+        hostname: "api.hederatoolbox.com",
+        path: "/admin/analytics",
+        method: "GET",
+        headers: { "x-admin-secret": ADMIN_SECRET, "Accept": "application/json" },
+      }, res => {
+        let data = "";
+        res.on("data", c => data += c);
+        res.on("end", () => { try { resolve(JSON.parse(data)); } catch { resolve(null); } });
+      });
+      req.on("error", () => resolve(null));
+      req.end();
+    }),
+  ]);
+  // Merge into a flat object VisionForge can read
+  return {
+    total_accounts:    stats?.summary?.total_accounts ?? null,
+    total_calls:       stats?.summary?.total_calls ?? null,
+    calls_24h:         analytics?.monthly?.this_month?.calls ?? null,
+    revenue_24h_hbar:  analytics?.monthly?.this_month?.hbar ?? null,
+    calls_7d:          analytics?.tool_trends?.reduce((s, t) => s + (t.calls_7d || 0), 0) ?? null,
+    xagent:            analytics?.xagent ?? null,
+  };
 }
 
 // ─── Fixatum admin issuances ──────────────────────────────────────────────────
@@ -175,10 +195,10 @@ async function getXAgentBalance() {
       res.on("data", c => data += c);
       res.on("end", () => {
         try {
-          const accounts = JSON.parse(data);
-          const xagent = Array.isArray(accounts)
-            ? accounts.find(a => a.api_key === XAGENT_KEY)
-            : null;
+          const parsed = JSON.parse(data);
+          // endpoint returns { accounts: [...] }
+          const accounts = Array.isArray(parsed) ? parsed : (parsed?.accounts ?? []);
+          const xagent = accounts.find(a => a.api_key === XAGENT_KEY);
           resolve(xagent ? xagent.balance_tinybars / 100_000_000 : null);
         } catch { resolve(null); }
       });
@@ -294,6 +314,8 @@ export async function runVisionForgeCycle() {
   const toolboxRevenue24h = toolboxStats?.revenue_24h_hbar ?? "?";
   const toolboxAccounts   = toolboxStats?.total_accounts ?? "?";
   const toolboxCalls7d    = toolboxStats?.calls_7d    ?? "?";
+  // XAgent balance from analytics if direct lookup failed
+  const resolvedXagentBalance = xagentBalance ?? (toolboxStats?.xagent?.balance_hbar ? parseFloat(toolboxStats.xagent.balance_hbar) : null);
 
   // ── Process Fixatum metrics ──────────────────────────────────────────────
   let fixatumReg24h = 0;
@@ -321,7 +343,7 @@ export async function runVisionForgeCycle() {
     `24h revenue: ${toolboxRevenue24h} ħ`,
     `7d tool calls: ${toolboxCalls7d}`,
     `Total accounts: ${toolboxAccounts}`,
-    `XAgent balance: ${xagentBalance !== null ? xagentBalance.toFixed(2) + " ħ" : "unknown"}`,
+    `XAgent balance: ${resolvedXagentBalance !== null ? resolvedXagentBalance.toFixed(2) + " ħ" : "unknown"}`,
     ``,
     `=== FIXATUM ===`,
     `Treasury: ${fixatumBalance !== null ? fixatumBalance.toFixed(2) + " ħ" : "unknown"}`,
@@ -339,8 +361,8 @@ export async function runVisionForgeCycle() {
   if (fixatumBalance !== null && fixatumBalance < FIXATUM_TREASURY_WARN) {
     alerts.push(`⚠️ Fixatum treasury low: ${fixatumBalance.toFixed(2)} ħ (threshold: ${FIXATUM_TREASURY_WARN} ħ)`);
   }
-  if (xagentBalance !== null && xagentBalance < XAGENT_BALANCE_WARN) {
-    alerts.push(`⚠️ XAgent balance low: ${xagentBalance.toFixed(2)} ħ — top up via /admin/provision`);
+  if (resolvedXagentBalance !== null && resolvedXagentBalance < XAGENT_BALANCE_WARN) {
+    alerts.push(`⚠️ XAgent balance low: ${resolvedXagentBalance.toFixed(2)} ħ — top up via /admin/provision`);
   }
 
   // ── Haiku synthesis ──────────────────────────────────────────────────────
@@ -355,7 +377,7 @@ export async function runVisionForgeCycle() {
     `━━━━━━━━━━━━━━━━━━━━`,
     `<b>Toolbox</b>  ${toolboxBalance !== null ? toolboxBalance.toFixed(2) + " ħ" : "—"} treasury · ${toolboxCalls24h} calls · ${toolboxRevenue24h} ħ (24h)`,
     `<b>Fixatum</b>   ${fixatumBalance !== null ? fixatumBalance.toFixed(2) + " ħ" : "—"} treasury · ${fixatumReg24h} registrations (24h)`,
-    `<b>XAgent</b>    ${xagentBalance !== null ? xagentBalance.toFixed(2) + " ħ" : "—"} balance`,
+    `<b>XAgent</b>    ${resolvedXagentBalance !== null ? resolvedXagentBalance.toFixed(2) + " ħ" : "—"} balance`,
     alertBlock,
     insightBlock,
     `━━━━━━━━━━━━━━━━━━━━`,
