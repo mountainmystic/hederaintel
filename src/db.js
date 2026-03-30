@@ -367,4 +367,55 @@ export function checkRateLimit(ip) {
   return false;
 }
 
+// ─────────────────────────────────────────────
+// Tool access control (gated tools)
+// ─────────────────────────────────────────────
+// Tracks which api_keys have been granted access to gated tools.
+// Gated tools never appear in the public tool list — only for authorised accounts.
+
+try { db.exec(`
+  CREATE TABLE IF NOT EXISTS tool_access (
+    api_key    TEXT NOT NULL,
+    tool_name  TEXT NOT NULL,
+    granted_at TEXT NOT NULL DEFAULT (datetime('now')),
+    granted_by TEXT,
+    PRIMARY KEY (api_key, tool_name)
+  );
+  CREATE INDEX IF NOT EXISTS idx_tool_access_api_key ON tool_access(api_key);
+`); } catch { /* already exists */ }
+
+const toolAccessStmts = {
+  grant:    db.prepare(`INSERT OR IGNORE INTO tool_access (api_key, tool_name, granted_by) VALUES (?, ?, ?)`),
+  revoke:   db.prepare(`DELETE FROM tool_access WHERE api_key = ? AND tool_name = ?`),
+  hasAccess: db.prepare(`SELECT 1 FROM tool_access WHERE api_key = ? AND tool_name = ? LIMIT 1`),
+  byKey:    db.prepare(`SELECT tool_name, granted_at, granted_by FROM tool_access WHERE api_key = ?`),
+  allGrants: db.prepare(`SELECT * FROM tool_access ORDER BY granted_at DESC`),
+};
+
+// Grant an api_key access to a gated tool.
+export function grantToolAccess(apiKey, toolName, grantedBy = 'admin') {
+  toolAccessStmts.grant.run(apiKey, toolName, grantedBy);
+}
+
+// Revoke access to a gated tool.
+export function revokeToolAccess(apiKey, toolName) {
+  const result = toolAccessStmts.revoke.run(apiKey, toolName);
+  return result.changes > 0;
+}
+
+// Check if an api_key has access to a specific gated tool.
+export function hasToolAccess(apiKey, toolName) {
+  return !!toolAccessStmts.hasAccess.get(apiKey, toolName);
+}
+
+// Get all gated tools granted to an api_key.
+export function getToolAccessByKey(apiKey) {
+  return toolAccessStmts.byKey.all(apiKey);
+}
+
+// Get all grants — for admin dashboard.
+export function getAllToolGrants() {
+  return toolAccessStmts.allGrants.all();
+}
+
 export { db };

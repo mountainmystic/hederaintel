@@ -10,15 +10,22 @@ import { CONTRACT_TOOL_DEFINITIONS, executeContractTool } from "./modules/contra
 import { ACCOUNT_TOOL_DEFINITIONS, executeAccountTool } from "./modules/account/tools.js";
 import { LEGAL_TOOL_DEFINITIONS, executeLegalTool } from "./modules/legal/tools.js";
 import { checkConsent } from "./consent.js";
-import { logProvenance, getAgentDid } from "./db.js";
+import { logProvenance, getAgentDid, hasToolAccess } from "./db.js";
 
+// Gated tools — only visible and callable by authorised accounts.
+// These never appear in the public list_tools response.
+export const GATED_TOOL_NAMES = new Set(["hcs_create_topic"]);
+export const GATED_TOOLS = COMPLIANCE_TOOL_DEFINITIONS.filter(t => GATED_TOOL_NAMES.has(t.name));
+
+// Public tool list — visible to all agents
 export const ALL_TOOLS = [
   // Legal / onboarding (always first — agents see these before any paid tool)
   ...LEGAL_TOOL_DEFINITIONS,
   ...ACCOUNT_TOOL_DEFINITIONS,
   // Paid tools
   ...HCS_TOOL_DEFINITIONS,
-  ...COMPLIANCE_TOOL_DEFINITIONS,
+  // Compliance tools minus gated ones
+  ...COMPLIANCE_TOOL_DEFINITIONS.filter(t => !GATED_TOOL_NAMES.has(t.name)),
   ...GOVERNANCE_TOOL_DEFINITIONS,
   ...TOKEN_TOOL_DEFINITIONS,
   ...IDENTITY_TOOL_DEFINITIONS,
@@ -61,7 +68,17 @@ async function routeTool(name, args, req) {
   if (["get_terms", "confirm_terms"].includes(name)) return executeLegalTool(name, args, req);
   if (name === "account_info") return executeAccountTool(name, args);
 
-  // ── Consent gate ─────────────────────────────────────────────────────────
+  // ── Gated tool access check ────────────────────────────────────────────────────
+  if (GATED_TOOL_NAMES.has(name)) {
+    if (!hasToolAccess(args?.api_key, name)) {
+      throw new Error(
+        `Tool "${name}" requires explicit access grant. ` +
+        `Contact the platform operator to request access.`
+      );
+    }
+  }
+
+  // ── Consent gate ────────────────────────────────────────────────────
   checkConsent(name, args);
 
   // ── Execute tool ──────────────────────────────────────────────────────
@@ -120,8 +137,16 @@ export function createServer(req) {
     { capabilities: { tools: {} } }
   );
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return { tools: ALL_TOOLS };
+  server.setRequestHandler(ListToolsRequestSchema, async (request) => {
+    // Build a personalised tool list.
+    // Start with the public tools, then append any gated tools this account has access to.
+    const apiKey = request?.params?.arguments?.api_key || req?.apiKey || null;
+    let tools = [...ALL_TOOLS];
+    if (apiKey) {
+      const gatedAllowed = GATED_TOOLS.filter(t => hasToolAccess(apiKey, t.name));
+      tools = [...tools, ...gatedAllowed];
+    }
+    return { tools };
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {

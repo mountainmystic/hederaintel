@@ -300,6 +300,41 @@ const httpServer = http.createServer(async (req, res) => {
     });
   }
 
+  // ── Tool access management ─────────────────────────────────────────────────
+  // POST /admin/grant-tool-access  { api_key, tool_name }
+  // POST /admin/revoke-tool-access { api_key, tool_name }
+  // GET  /admin/tool-access        — list all grants
+
+  if (req.method === "POST" && url.pathname === "/admin/grant-tool-access") {
+    if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
+    try {
+      const { api_key, tool_name } = JSON.parse(await readBody(req));
+      if (!api_key || !tool_name) return json(res, 400, { error: "api_key and tool_name required" });
+      const { grantToolAccess } = await import("./db.js");
+      grantToolAccess(api_key, tool_name, "admin");
+      console.error(`[Access] Granted ${tool_name} to ${api_key}`);
+      return json(res, 200, { success: true, api_key, tool_name, message: `Access to ${tool_name} granted.` });
+    } catch (e) { return json(res, 500, { error: e.message }); }
+  }
+
+  if (req.method === "POST" && url.pathname === "/admin/revoke-tool-access") {
+    if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
+    try {
+      const { api_key, tool_name } = JSON.parse(await readBody(req));
+      if (!api_key || !tool_name) return json(res, 400, { error: "api_key and tool_name required" });
+      const { revokeToolAccess } = await import("./db.js");
+      const removed = revokeToolAccess(api_key, tool_name);
+      console.error(`[Access] Revoked ${tool_name} from ${api_key}`);
+      return json(res, 200, { success: true, api_key, tool_name, removed, message: removed ? `Access to ${tool_name} revoked.` : "Grant not found." });
+    } catch (e) { return json(res, 500, { error: e.message }); }
+  }
+
+  if (req.method === "GET" && url.pathname === "/admin/tool-access") {
+    if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
+    const { getAllToolGrants } = await import("./db.js");
+    return json(res, 200, { grants: getAllToolGrants() });
+  }
+
   // GDPR delete
   if (req.method === "DELETE" && url.pathname === "/admin/delete-account") {
     if (!isAdmin(req)) return json(res, 401, { error: "Unauthorized" });
