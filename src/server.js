@@ -68,7 +68,7 @@ async function routeTool(name, args, req) {
   let result;
   if (["hcs_monitor", "hcs_query", "hcs_understand"].includes(name)) {
     result = await executeHCSTool(name, args);
-  } else if (["hcs_write_record", "hcs_verify_record", "hcs_audit_trail"].includes(name)) {
+  } else if (["hcs_write_record", "hcs_verify_record", "hcs_audit_trail", "hcs_create_topic"].includes(name)) {
     result = await executeComplianceTool(name, args);
   } else if (["governance_monitor", "governance_analyze", "governance_vote"].includes(name)) {
     result = await executeGovernanceTool(name, args);

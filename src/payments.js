@@ -12,6 +12,7 @@ export const COSTS = {
   hcs_write_record:         { tinybars: 500000000, hbar: "5.0000" },
   hcs_verify_record:        { tinybars: 100000000, hbar: "1.0000" },
   hcs_audit_trail:          { tinybars: 200000000, hbar: "2.0000" },
+  hcs_create_topic:         { tinybars: 200000000, hbar: "2.0000" },
   // Module 3 - Governance Intelligence
   governance_monitor:       { tinybars: 20000000,  hbar: "0.2000" },
   governance_analyze:       { tinybars: 100000000, hbar: "1.0000" },

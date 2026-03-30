@@ -4,6 +4,7 @@ import {
   AccountId,
   PrivateKey,
   TopicMessageSubmitTransaction,
+  TopicCreateTransaction,
 } from "@hashgraph/sdk";
 import axios from "axios";
 import crypto from "crypto";
@@ -75,6 +76,20 @@ export const COMPLIANCE_TOOL_DEFINITIONS = [
         api_key: { type: "string", description: "Your HederaIntel API key" },
       },
       required: ["entity_id", "api_key"],
+    },
+  },
+  {
+    name: "hcs_create_topic",
+    description: "Create a new HCS topic on Hedera. Requires a Fixatum DID with score ≥ 40. Topic creation is gated — only agents with verified on-chain identity can create topics. Returns the new topic ID. 2.0 HBAR.",
+    annotations: { title: "Create HCS Topic", readOnlyHint: false, destructiveHint: false },
+    inputSchema: {
+      type: "object",
+      properties: {
+        agent_did: { type: "string", description: "Your Fixatum DID (did:hedera:mainnet:z...). Must have credibility score ≥ 40." },
+        memo:      { type: "string", description: "Topic memo — briefly describe the purpose of this topic and the creating agent." },
+        api_key:   { type: "string", description: "Your HederaToolbox API key (your Hedera account ID)" },
+      },
+      required: ["agent_did", "memo", "api_key"],
     },
   },
 ];
@@ -221,6 +236,93 @@ export async function executeComplianceTool(name, args) {
       topic_id: topicId,
       total_records: trail.length,
       audit_trail: trail.slice(0, limit),
+      payment,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  if (name === "hcs_create_topic") {
+    // ── Guardrail 1: DID format check ─────────────────────────────────────────
+    const did = args.agent_did || "";
+    if (!did.startsWith("did:hedera:mainnet:z")) {
+      return {
+        denied: true,
+        reason: "agent_did must be a valid Fixatum DID (did:hedera:mainnet:z...)",
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // ── Guardrail 2: DID score check via Fixatum ───────────────────────────────
+    // Minimum score of 40 (grade C) required to create topics.
+    const FIXATUM_API = process.env.FIXATUM_API_URL || "https://did.fixatum.com";
+    const MIN_SCORE = 40;
+
+    let score = null;
+    try {
+      const encodedDid = encodeURIComponent(did);
+      const scoreRes = await axios.get(`${FIXATUM_API}/score/${encodedDid}`, {
+        timeout: 5000,
+        headers: { Accept: "application/json" },
+      });
+      score = scoreRes.data?.score ?? null;
+    } catch (e) {
+      return {
+        denied: true,
+        reason: "Could not verify DID score with Fixatum. Ensure your DID is registered at fixatum.com and try again.",
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    if (score === null || score < MIN_SCORE) {
+      return {
+        denied: true,
+        reason: `Credibility score too low. Required: ${MIN_SCORE}, Current: ${score ?? "unscored"}. Build provenance via HederaToolbox and retry once your score reaches ${MIN_SCORE}.`,
+        score,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // ── Guardrail 3: Rate limit — max 3 topic creations per DID per 24h ────────
+    // Stored in SQLite via a simple check against recent provenance records.
+    // We reuse the provenance table: count hcs_create_topic calls in last 24h for this DID.
+    const { db } = await import("../../db.js");
+    const recentCount = db.prepare(`
+      SELECT COUNT(*) as count FROM provenance
+      WHERE agent_did = ? AND tool_name = 'hcs_create_topic'
+      AND timestamp >= datetime('now', '-24 hours')
+    `).get(did);
+
+    const DAILY_LIMIT = 3;
+    if (recentCount && recentCount.count >= DAILY_LIMIT) {
+      return {
+        denied: true,
+        reason: `Daily topic creation limit reached (${DAILY_LIMIT} per DID per 24 hours). Try again tomorrow.`,
+        topics_created_today: recentCount.count,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // ── All guardrails passed — charge and create ──────────────────────────────
+    const payment = chargeForTool("hcs_create_topic", args.api_key);
+    const client = getClient();
+
+    const tx = await new TopicCreateTransaction()
+      .setTopicMemo(args.memo)
+      .execute(client);
+
+    const receipt = await tx.getReceipt(client);
+    const topicId = receipt.topicId.toString();
+
+    return {
+      success: true,
+      topic_id: topicId,
+      memo: args.memo,
+      created_by_did: did,
+      transaction_id: tx.transactionId.toString(),
+      score_at_creation: score,
+      topics_created_today: (recentCount?.count ?? 0) + 1,
+      daily_limit: DAILY_LIMIT,
+      note: "Topic created on Hedera mainnet. The creating DID is recorded in provenance.",
       payment,
       timestamp: new Date().toISOString(),
     };
