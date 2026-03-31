@@ -80,7 +80,7 @@ export const COMPLIANCE_TOOL_DEFINITIONS = [
   },
   {
     name: "hcs_create_topic",
-    description: "Create a new HCS topic on Hedera. Requires a Fixatum DID with score ≥ 40. Topic creation is gated — only agents with verified on-chain identity can create topics. Returns the new topic ID. 2.0 HBAR.",
+    description: "Create a new HCS topic on Hedera. Requires a Fixatum DID. Access is tiered: platform accounts and explicitly granted issuers bypass the score check; self-service agents need a DID with score ≥ 40. All callers subject to a 3-per-day rate limit. Returns the new topic ID. 2.0 HBAR.",
     annotations: { title: "Create HCS Topic", readOnlyHint: false, destructiveHint: false },
     inputSchema: {
       type: "object",
@@ -242,50 +242,80 @@ export async function executeComplianceTool(name, args) {
   }
 
   if (name === "hcs_create_topic") {
-    // ── Guardrail 1: DID format check ─────────────────────────────────────────
+    // ── Guardrail 1: DID format check — required for all tiers ────────────────
     const did = args.agent_did || "";
-    if (!did.startsWith("did:hedera:mainnet:z")) {
+    if (!did.startsWith("did:hedera:mainnet:")) {
       return {
         denied: true,
-        reason: "agent_did must be a valid Fixatum DID (did:hedera:mainnet:z...)",
+        reason: "agent_did must be a valid Fixatum DID (did:hedera:mainnet:...)",
         timestamp: new Date().toISOString(),
       };
     }
 
-    // ── Guardrail 2: DID score check via Fixatum ───────────────────────────────
-    // Minimum score of 40 (grade C) required to create topics.
+    // ── Guardrail 2: Access tier check ────────────────────────────────────────
+    // Three tiers, each with different trust requirements:
+    //
+    //   Tier A — Platform account (HEDERA_ACCOUNT_ID)
+    //     Fixatum itself. Root of trust. No score check.
+    //
+    //   Tier B — Explicitly granted accounts (tool_access table)
+    //     Accounts granted access by the operator after vetting — e.g. registered
+    //     issuers. Vetting happened at registration time. No score check.
+    //
+    //   Tier C — Self-service agents (everyone else)
+    //     No prior vetting. Must hold a Fixatum DID with score >= 40.
+    //
+    // All tiers still subject to the daily rate limit (Guardrail 3).
+
     const FIXATUM_API = process.env.FIXATUM_API_URL || "https://did.fixatum.com";
-    const MIN_SCORE = 40;
+    const PLATFORM_ACCOUNT = process.env.HEDERA_ACCOUNT_ID;
+    const { db, hasToolAccess } = await import("../../db.js");
+
+    const isTierA = args.api_key === PLATFORM_ACCOUNT;
+    const isTierB = !isTierA && hasToolAccess(args.api_key, "hcs_create_topic");
+    const isTierC = !isTierA && !isTierB;
 
     let score = null;
-    try {
-      const encodedDid = encodeURIComponent(did);
-      const scoreRes = await axios.get(`${FIXATUM_API}/score/${encodedDid}`, {
-        timeout: 5000,
-        headers: { Accept: "application/json" },
-      });
-      score = scoreRes.data?.score ?? null;
-    } catch (e) {
-      return {
-        denied: true,
-        reason: "Could not verify DID score with Fixatum. Ensure your DID is registered at fixatum.com and try again.",
-        timestamp: new Date().toISOString(),
-      };
-    }
+    let accessTier;
 
-    if (score === null || score < MIN_SCORE) {
-      return {
-        denied: true,
-        reason: `Credibility score too low. Required: ${MIN_SCORE}, Current: ${score ?? "unscored"}. Build provenance via HederaToolbox and retry once your score reaches ${MIN_SCORE}.`,
-        score,
-        timestamp: new Date().toISOString(),
-      };
+    if (isTierA) {
+      // Platform account — bypass score check entirely
+      accessTier = "platform";
+    } else if (isTierB) {
+      // Granted issuer — bypass score check, trust came from registration vetting
+      accessTier = "granted";
+    } else {
+      // Self-service agent — must have DID with score >= 40
+      accessTier = "self-service";
+      const MIN_SCORE = 40;
+      try {
+        const encodedDid = encodeURIComponent(did);
+        const scoreRes = await axios.get(`${FIXATUM_API}/score/${encodedDid}`, {
+          timeout: 5000,
+          headers: { Accept: "application/json" },
+        });
+        score = scoreRes.data?.score ?? null;
+      } catch (e) {
+        return {
+          denied: true,
+          reason: "Could not verify DID score with Fixatum. Ensure your DID is registered at fixatum.com and try again.",
+          timestamp: new Date().toISOString(),
+        };
+      }
+
+      if (score === null || score < MIN_SCORE) {
+        return {
+          denied: true,
+          reason: `Credibility score too low. Required: ${MIN_SCORE}, Current: ${score ?? "unscored"}. Build provenance via HederaToolbox and retry once your score reaches ${MIN_SCORE}.`,
+          access_tier: accessTier,
+          score,
+          timestamp: new Date().toISOString(),
+        };
+      }
     }
 
     // ── Guardrail 3: Rate limit — max 3 topic creations per DID per 24h ────────
-    // Stored in SQLite via a simple check against recent provenance records.
-    // We reuse the provenance table: count hcs_create_topic calls in last 24h for this DID.
-    const { db } = await import("../../db.js");
+    // Applies to all tiers. Even the platform account can't bulk-create topics.
     const recentCount = db.prepare(`
       SELECT COUNT(*) as count FROM provenance
       WHERE agent_did = ? AND tool_name = 'hcs_create_topic'
@@ -297,6 +327,7 @@ export async function executeComplianceTool(name, args) {
       return {
         denied: true,
         reason: `Daily topic creation limit reached (${DAILY_LIMIT} per DID per 24 hours). Try again tomorrow.`,
+        access_tier: accessTier,
         topics_created_today: recentCount.count,
         timestamp: new Date().toISOString(),
       };
@@ -319,6 +350,7 @@ export async function executeComplianceTool(name, args) {
       memo: args.memo,
       created_by_did: did,
       transaction_id: tx.transactionId.toString(),
+      access_tier: accessTier,
       score_at_creation: score,
       topics_created_today: (recentCount?.count ?? 0) + 1,
       daily_limit: DAILY_LIMIT,
