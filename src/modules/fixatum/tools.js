@@ -191,15 +191,15 @@ export async function executeFixatumTool(name, args) {
 
     // Check if already registered
     const existing = await fixatumGet(`/did/${hedera_account_id}`);
-    if (existing.ok && existing.data?.did) {
+    if (existing.ok && existing.data?.agent_did) {
       return {
         already_registered: true,
-        did: existing.data.did,
+        did: existing.data.agent_did,
         registered_at: existing.data.registered_at || null,
-        score_url: `https://did.fixatum.com/score/${existing.data.did}`,
+        score_url: `https://did.fixatum.com/score/${existing.data.agent_did}`,
         message: "This account is already registered with Fixatum. No charge applied.",
         next_steps: [
-          `Query your live score: call fixatum_score with did_or_account_id="${existing.data.did}"`,
+          `Query your live score: call fixatum_score with did_or_account_id="${existing.data.agent_did}"`,
           "Build provenance: use HederaToolbox tools with this api_key to accumulate verified call history.",
           "Bind your DID to Toolbox provenance: POST /identify with api_key and agent_did to link your score to your call history.",
         ],
@@ -243,8 +243,8 @@ export async function executeFixatumTool(name, args) {
       await new Promise(r => setTimeout(r, 5000));
       console.error(`[Fixatum] Polling attempt ${attempt}/10 for ${hedera_account_id}`);
       const poll = await fixatumGet(`/did/${hedera_account_id}`);
-      if (poll.ok && poll.data?.did) {
-        did = poll.data.did;
+      if (poll.ok && poll.data?.agent_did) {
+        did = poll.data.agent_did;
         registeredAt = poll.data.registered_at || null;
         break;
       }
@@ -322,8 +322,8 @@ export async function executeFixatumTool(name, args) {
       fixatumGet(`/score/${hedera_account_id}`),
     ]);
 
-    const registered = didRes.ok && !!didRes.data?.did;
-    const did = registered ? didRes.data.did : null;
+    const registered = didRes.ok && !!didRes.data?.agent_did;
+    const did = registered ? didRes.data.agent_did : null;
     const registeredAt = registered ? (didRes.data.registered_at || null) : null;
     const score = scoreRes.ok ? scoreRes.data : null;
 
