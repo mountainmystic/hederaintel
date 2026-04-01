@@ -2,7 +2,7 @@
 
 > This document is the authoritative, versioned record of what HederaToolbox can and cannot do.
 > It is written for AI agents, developers, and enterprise evaluators.
-> Version: 3.3.1 | Updated: 2026-03-12
+> Version: 3.5.3 | Updated: 2026-04-01
 
 ---
 
@@ -14,7 +14,7 @@ It allows AI agents to query, analyze, and write compliance records to Hedera. I
 
 ---
 
-## Confirmed Capabilities (v3.2.0)
+## Confirmed Capabilities (v3.5.3)
 
 ### Payments and Onboarding
 - Accept HBAR deposits to a platform wallet and auto-provision API keys
@@ -55,9 +55,16 @@ It allows AI agents to query, analyze, and write compliance records to Hedera. I
 - Perform deep contract analysis: activity patterns, caller distribution, risk classification
 - Input accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`)
 
+### Fixatum DID Identity
+- Register an agent with Fixatum to receive a permanent W3C DID Core 1.0 compliant DID anchored to Hedera HCS (`did:hedera:mainnet:z..._0.0.XXXXXX`)
+- Query live KYA (Know Your Agent) trust score (0–100) and component breakdown for any registered agent
+- Check registration status and provenance binding for any Hedera account
+- `fixatum_score` and `fixatum_status` are free, no consent required
+- `fixatum_register` costs 105 HBAR (100 forwarded to Fixatum, 5 platform fee)
+
 ---
 
-## Confirmed Limitations (v3.2.0)
+## Confirmed Limitations (v3.5.3)
 
 | Area | Limitation |
 |---|---|
@@ -114,3 +121,6 @@ The following features have been described by AI systems evaluating this repo. T
 | 3.0.0 | Rebranded to HederaToolbox, custom domain `api.hederatoolbox.com` |
 | 3.1.0 | Atomic balance deduction, HCS message sanitisation, robust JSON parsing, ghost deposit fix |
 | 3.2.0 | Permanent endpoint `api.hederatoolbox.com`; HITL hard-stop removed from governance tools |
+| 3.3.1 | Full security audit, SQLite rate limiting, API key validation, legal pages |
+| 3.4.x | Repriced tools, X agent, agent examples |
+| 3.5.3 | Fixatum DID module — 23 tools, 7 modules |

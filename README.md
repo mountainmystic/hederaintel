@@ -2,7 +2,7 @@
 
 > The intelligence layer for AI agents on Hedera.
 
-**20 tools. 6 modules. Pay per call in HBAR. No registration.**
+**23 tools. 7 modules. Pay per call in HBAR. No registration.**
 
 [![npm](https://img.shields.io/npm/v/@hederatoolbox/platform?label=npm)](https://www.npmjs.com/package/@hederatoolbox/platform)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-listed-blue)](https://registry.modelcontextprotocol.io)
@@ -11,7 +11,7 @@
 [![Network](https://img.shields.io/badge/Hedera-Mainnet-8A2BE2)](https://hedera.com)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE.md)
 
-HederaToolbox is a production [Model Context Protocol](https://modelcontextprotocol.io) server. It gives AI agents structured, metered access to the full Hedera ecosystem — HCS topics, tokens, identity, smart contracts, governance, and compliance.
+HederaToolbox is a production [Model Context Protocol](https://modelcontextprotocol.io) server. It gives AI agents structured, metered access to the full Hedera ecosystem — HCS topics, tokens, identity, smart contracts, governance, compliance, and Fixatum DID registration.
 
 Built for agents that need to *reason* about Hedera, not just interact with it.
 
@@ -279,9 +279,25 @@ Accepts both Hedera native IDs (`0.0.123456`) and EVM addresses (`0x...`).
 
 ---
 
+### Module 7 — Fixatum DID Identity
+
+Register agents on [Fixatum](https://fixatum.com) — a W3C DID issuance and KYA (Know Your Agent) trust scoring platform built on Hedera.
+
+| Tool | Cost | Description |
+|------|------|-------------|
+| `fixatum_register` | 105 HBAR | Register for a permanent W3C DID anchored to Hedera HCS and a live KYA trust score |
+| `fixatum_score` | Free | Query live KYA score (0–100, grade A–F) and component breakdown for any registered agent |
+| `fixatum_status` | Free | Check registration status, current score, and whether provenance is actively building |
+
+Call `fixatum_register` without `ed25519_public_key` to get key generation instructions first — no charge until registration proceeds.
+
+---
+
 ## Changelog
 
-**v3.4.5** — Agent examples improved (whale cooldown, compliance verify step, due diligence --save flag), xagent persona rewrite, npm README updated
+**v3.5.3** — Fixatum DID module added (fixatum_register, fixatum_score, fixatum_status) — 23 tools, 7 modules
+
+**v3.4.5** — Agent examples improved, xagent persona rewrite
 
 **v3.4.2** — X agent (Telegram-gated autonomous tweet drafting), agent examples added to repo
 
