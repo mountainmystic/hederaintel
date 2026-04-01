@@ -488,12 +488,24 @@ const httpServer = http.createServer(async (req, res) => {
     )];
     const timestamps = records.map(r => r.timestamp).sort();
     const days = new Set(timestamps.map(t => t.slice(0, 10))).size;
+    // Velocity windows
+    const now = Date.now();
+    const calls_last_24h = records.filter(r => r.timestamp && (now - new Date(r.timestamp).getTime()) < 86_400_000).length;
+    const calls_last_7d  = records.filter(r => r.timestamp && (now - new Date(r.timestamp).getTime()) < 604_800_000).length;
+    // Tool diversity breakdown
+    const tool_breakdown = {};
+    for (const r of records) {
+      if (r.tool_name) tool_breakdown[r.tool_name] = (tool_breakdown[r.tool_name] || 0) + 1;
+    }
     return json(res, 200, {
       did,
       verified_calls: records.length,
       first_call: timestamps[0],
       last_call: timestamps[timestamps.length - 1],
       active_days: days,
+      calls_last_24h,
+      calls_last_7d,
+      tool_breakdown,
       risk_flag_rate: parseFloat((flagged.length / records.length).toFixed(4)),
       risk_flags_seen: allFlags,
       source: "api.hederatoolbox.com",
