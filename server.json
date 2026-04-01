@@ -1,13 +1,13 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
   "name": "io.github.mountainmystic/hederatoolbox",
-  "version": "3.4.5",
-  "description": "Hedera blockchain intelligence for AI agents. 20 tools, 6 modules — HCS, compliance, governance, tokens, identity, contracts. Pay per call in HBAR. No registration. Also available as an OpenClaw skill on ClawHub.",
+  "version": "3.5.3",
+  "description": "Hedera blockchain intelligence for AI agents. 23 tools, 7 modules — HCS, compliance, governance, tokens, identity, contracts, Fixatum DID. Pay per call in HBAR. No registration.",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@hederatoolbox/platform",
-      "version": "3.4.5",
+      "version": "3.5.3",
       "transport": {
         "type": "streamable-http",
         "url": "https://api.hederatoolbox.com/mcp"
