@@ -35,7 +35,7 @@ export const ALL_TOOLS = [
 ];
 
 // Tools that bypass consent entirely
-const FREE_TOOLS = new Set(["account_info", "get_terms", "confirm_terms"]);
+const FREE_TOOLS = new Set(["account_info", "get_terms", "confirm_terms", "fixatum_score", "fixatum_status"]);
 
 // ── API key validation ────────────────────────────────────────────────────────
 // Reject keys that are empty, too long, or clearly malformed.
