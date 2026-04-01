@@ -25,9 +25,11 @@ export const COSTS = {
   identity_verify_kyc:      { tinybars: 50000000,  hbar: "0.5000" },
   identity_check_sanctions: { tinybars: 100000000, hbar: "1.0000" },
   // Module 6 - Smart Contract Abstraction
-  contract_read:            { tinybars: 20000000,  hbar: "0.2000" },
-  contract_call:            { tinybars: 100000000, hbar: "1.0000" },
-  contract_analyze:         { tinybars: 150000000, hbar: "1.5000" },
+  contract_read:            { tinybars: 20000000,   hbar: "0.2000" },
+  contract_call:            { tinybars: 100000000,  hbar: "1.0000" },
+  contract_analyze:         { tinybars: 150000000,  hbar: "1.5000" },
+  // Module 7 - Fixatum Identity
+  fixatum_register:         { tinybars: 10500000000, hbar: "105.0000" },
 };
 
 // Called by every tool before executing. Deducts cost from the account's
