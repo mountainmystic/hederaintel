@@ -29,7 +29,7 @@ export const COSTS = {
   contract_call:            { tinybars: 100000000,  hbar: "1.0000" },
   contract_analyze:         { tinybars: 150000000,  hbar: "1.5000" },
   // Module 7 - Fixatum Identity
-  fixatum_register:         { tinybars: 10500000000, hbar: "105.0000" },
+  fixatum_register:         { tinybars: 10000000000, hbar: "100.0000" },
 };
 
 // Called by every tool before executing. Deducts cost from the account's

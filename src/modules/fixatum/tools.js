@@ -43,7 +43,7 @@ export const FIXATUM_TOOL_DEFINITIONS = [
   {
     name: "fixatum_register",
     description:
-      "Register this agent with Fixatum to get a permanent W3C-compliant DID (did:hedera:mainnet:z...) anchored to Hedera HCS and a live KYA trust score. Costs 105 HBAR. Requires a dedicated Ed25519 key pair — NOT your Hedera account key. Call with hedera_account_id only to get full prerequisites and key generation instructions. Free prerequisite check, no charge until registration proceeds.",
+      "Register this agent with Fixatum to get a permanent W3C-compliant DID (did:hedera:mainnet:z...) anchored to Hedera HCS and a live KYA trust score. Costs 100 HBAR. Requires a dedicated Ed25519 key pair — NOT your Hedera account key. Call with hedera_account_id only to get full prerequisites and key generation instructions. Free prerequisite check, no charge until registration proceeds.",
     annotations: {
       title: "Register Agent DID on Fixatum",
       readOnlyHint: false,
@@ -147,7 +147,7 @@ export async function executeFixatumTool(name, args) {
         },
         private_key_warning:
           "⚠️ Store your Ed25519 private key securely — offline or in a secrets manager. Fixatum never sees your private key. Loss of the private key does not affect your DID or score, but you will not be able to sign DID assertions in the future.",
-        cost: "105 HBAR total (100 HBAR forwarded to Fixatum, 5 HBAR platform fee). One-time, permanent.",
+        cost: "100 HBAR. One-time, permanent.",
         next_step:
           "Call fixatum_register again with both hedera_account_id and ed25519_public_key to register.",
         hedera_account_id,
@@ -201,14 +201,13 @@ export async function executeFixatumTool(name, args) {
         next_steps: [
           `Query your live score: call fixatum_score with did_or_account_id="${existing.data.agent_did}"`,
           "Build provenance: use HederaToolbox tools with this api_key to accumulate verified call history.",
-          "Bind your DID to Toolbox provenance: POST /identify with api_key and agent_did to link your score to your call history.",
         ],
         charged: false,
         timestamp: new Date().toISOString(),
       };
     }
 
-    // Charge 105 HBAR
+    // Charge 100 HBAR
     const payment = chargeForTool("fixatum_register", api_key);
 
     // Send 100 HBAR to Fixatum wallet with public key as memo
@@ -261,7 +260,6 @@ export async function executeFixatumTool(name, args) {
         charged: true,
         next_steps: [
           `Query your initial score: call fixatum_score with did_or_account_id="${did}"`,
-          "Bind your DID to Toolbox provenance: POST https://api.hederatoolbox.com/identify with { api_key, agent_did } — this links your on-chain call history to your Fixatum score.",
           "Build provenance: continue using HederaToolbox tools. Each call increments your verified call count, increasing the provenance component of your score (0–40 pts).",
         ],
         timestamp: new Date().toISOString(),
@@ -327,7 +325,6 @@ export async function executeFixatumTool(name, args) {
     const registeredAt = registered ? (didRes.data.registered_at || null) : null;
     const score = scoreRes.ok ? scoreRes.data : null;
 
-    // Provenance is bound if score source indicates public/toolbox data
     const provenanceBound = score
       ? (score.source === "public" || (score.meta?.provenance?.verified_calls > 0))
       : false;
@@ -341,7 +338,7 @@ export async function executeFixatumTool(name, args) {
         provenance_bound: false,
         hedera_account_id,
         next_step:
-          "Call fixatum_register with hedera_account_id to begin DID registration. Costs 105 HBAR. Call without ed25519_public_key first to get key generation instructions.",
+          "Call fixatum_register with hedera_account_id to begin DID registration. Costs 100 HBAR. Call without ed25519_public_key first to get key generation instructions.",
         timestamp: new Date().toISOString(),
       };
     }
