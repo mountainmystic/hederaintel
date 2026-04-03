@@ -429,9 +429,31 @@ export async function handleTelegramUpdate(update) {
   // Show typing indicator
   await telegramRequest("sendChatAction", { chat_id: chatId, action: "typing" });
 
-  // Get AI response
-  const history = getHistory(chatId);
-  const aiReply = await getAIResponse(text, history.slice(0, -1)); // exclude the message we just added
+  // Get AI response — wrapped so any unexpected throw still sends a message
+  let aiReply;
+  try {
+    const history = getHistory(chatId);
+    aiReply = await getAIResponse(text, history.slice(0, -1)); // exclude the message we just added
+  } catch (err) {
+    console.error("[Telegram] getAIResponse threw:", err.message);
+    // Remove the user message we added — failed turn shouldn't pollute history
+    const h = getHistory(chatId);
+    if (h.length && h[h.length - 1].role === "user") h.pop();
+    return sendMessage(chatId, "Sorry, I hit an error generating a response. Please try again.");
+  }
+
+  // If the AI returned a connectivity/error string, don't store it as a real reply
+  const isErrorReply = !aiReply ||
+    aiReply.startsWith("I'm having") ||
+    aiReply.startsWith("Sorry, something went wrong") ||
+    aiReply.startsWith("Sorry, I couldn't");
+
+  if (isErrorReply) {
+    // Remove the user message too — this turn never really happened
+    const h = getHistory(chatId);
+    if (h.length && h[h.length - 1].role === "user") h.pop();
+    return sendMessage(chatId, aiReply || "Sorry, I hit an error. Please try again.");
+  }
 
   // Check for escalation signal
   const escalateMatch = aiReply.match(/ESCALATE:\s*(.+)$/m);
