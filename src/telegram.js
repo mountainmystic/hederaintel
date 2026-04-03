@@ -106,7 +106,7 @@ HOW HEDERATOOLBOX WORKS
 
 HOW FIXATUM WORKS
 - Agent generates an Ed25519 key pair at did.fixatum.com/register
-- Sends ~$9 USD in HBAR to Fixatum wallet 0.0.10394452 with the public key in the memo
+- Sends 100 HBAR to Fixatum wallet 0.0.10394452 with the public key in the memo
 - Fixatum anchors the DID to Hedera HCS permanently. No private keys ever touch Fixatum.
 - DID format: did:hedera:mainnet:z{PUBLIC_KEY}_{HEDERA_ACCOUNT_ID}
 - Credibility score (0–100) is computed live on every query — never stored.
